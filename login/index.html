@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>login page</title>
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="stylesheet" href="../../style.css">
+<body>
+    <header class="head">
+        <h1> Duckhouse</h1>
+        <nav class="navbar">
+            <ul>
+                <li><a href="home.html">Home</a></li> 
+                <li><a href="lobby.html"> Play </a></li>
+                <li><a href="puzzle.html"> Puzzles </a></li>
+                <li><a href="login.html"> Login </a></li>
+                <li><a href=""> Profile </a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    
+    <a href="home.html">
+        <button style="background-color: gray; border-radius: 25px; font-size: 25px;"> back</button>
+    </a>
+    <h1>Login Here!</h1>
+    <p>Username and password sauce</p>
+
+    <form action="index.php" method="POST">
+        <label for="username">username:</label>
+        <input type="text" id="username" minlength="4" maxlength="15"><br>
+
+
+        <label for="password">password:</label>
+        <input type="password" id="password" minlength="8" maxlength="30" required><br>
+
+        <label for="email">email:</label>
+        <input type="email" id="email"><br>
+
+        <label for="phone">phone #:</label>
+        <input type="tel" id="phone" pattern="([0-9]{10})|(([0-9]{3}-){2}[0-9]{4})|(\([0-9]{3}\)[0-9]{3}-[0-9]{4})|(\([0-9]{3}\) [0-9]{3}-[0-9]{4})"><br>
+
+        <label for="bday">birthday:</label>
+        <input type="date" id="bday"><br>
+
+        <input type="reset"><br>
+        <input type="submit">
+    </form>
+</body>
+</html>
