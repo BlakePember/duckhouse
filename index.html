@@ -4,19 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Duckhouse</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-    
-    <h1> Blake Pember</h1>
-    <nav class="projects">
-        <ul>
-            <li><a href="duckhouse/">Duckhouse</a></li> 
-            <li><a href=""> Stock Graph Analyzer </a></li>
-        </ul>
-    </nav>
-
-    
+    <section>
+        <div class="projects">
+            <h1> Blake Pember</h1>
+            <p>Projects are currently in progress</p>
+            <ul>
+                <li><a href="duckhouse/">Duckhouse</a></li> 
+                <li><a href=""> Stock Graph Analyzer </a></li>
+            </ul>
+            <button onclick="toggle()">Toggle Dark Mode</button>
+        </div>
+    </section>
+    <script>
+        function toggle() {
+            document.body.classList.toggle("dark")
+        }
+    </script> 
 </body>
 </html>
