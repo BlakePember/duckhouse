@@ -1,5 +1,5 @@
 export type ParsedRoute =
-  | { page: 'home' }
+  | { page: 'home'; scrollToTutorial?: boolean }
   | { page: 'lobby' }
   | { page: 'practice' }
   | { page: 'room'; roomCode: string };
@@ -61,6 +61,9 @@ function parseRelativePath(raw: string): ParsedRoute {
   }
   if (normalized.toLowerCase() === '/practice') {
     return { page: 'practice' };
+  }
+  if (normalized.toLowerCase() === '/tutorial') {
+    return { page: 'home', scrollToTutorial: true };
   }
   return { page: 'home' };
 }

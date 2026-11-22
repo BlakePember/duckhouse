@@ -1,6 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ALL_SEATS,
   BoardId,
   ChessMoveInput,
   DropMoveInput,
@@ -16,6 +15,7 @@ import {
   getSeatKey,
   getSeatTeam,
 } from '../../shared/types';
+import { getPlayerSeats } from '../../shared/seats';
 import {
   applyChessMove,
   applyDropMove,
@@ -37,11 +37,12 @@ import {
 } from '../utils/sounds';
 
 export type AppPage = 'home' | 'lobby' | 'room' | 'practice';
-export type PracticeMode = 'bots' | 'sandbox';
+export type PracticeMode = 'bots' | 'dual' | 'sandbox';
 
 interface GameContextValue {
   page: AppPage;
   setPage: (p: AppPage) => void;
+  openTutorial: () => void;
 
   playerId: string;
   playerName: string;
@@ -62,11 +63,13 @@ interface GameContextValue {
 
   room: RoomState | null;
   mySeat: SeatKey | null;
+  mySeats: SeatKey[];
   isHost: boolean;
   createRoom: (opts: { name: string; visibility: RoomVisibility; timeControlId: string }) => Promise<boolean>;
   joinRoom: (code: string) => Promise<boolean>;
   leaveRoom: () => void;
-  takeSeat: (seat: SeatKey) => void;
+  takeSeat: (seat: SeatKey, keepExisting?: boolean) => void;
+  vacateSeat: (seat: SeatKey) => void;
   addBot: (seat?: SeatKey) => void;
   removeBot: (seat: SeatKey) => void;
   startGame: () => Promise<boolean>;
@@ -157,6 +160,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     else if (nextPage === 'lobby') navigatePath('/lobby');
     else if (nextPage === 'practice') navigatePath('/practice');
   }, []);
+
+  const scrollToTutorialSoon = useCallback(() => {
+    window.setTimeout(() => {
+      const el = document.getElementById('dh-tutorial');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
+  }, []);
+
+  const openTutorial = useCallback(() => {
+    setShowRules(false);
+    setPageState('home');
+    navigatePath('/tutorial');
+    scrollToTutorialSoon();
+  }, [scrollToTutorialSoon]);
 
   const connectAndEnterRoom = useCallback(async (code: string): Promise<boolean> => {
     const client = clientRef.current;
@@ -292,14 +311,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (window.location.hash) navigatePath('/practice', true);
         setPageState('practice');
       } else {
-        if (window.location.hash) navigatePath('/', true);
+        if (window.location.hash) navigatePath(parsed.scrollToTutorial ? '/tutorial' : '/', true);
         setPageState('home');
+        if (parsed.scrollToTutorial) {
+          scrollToTutorialSoon();
+        }
       }
     };
     syncRouteFromLocation();
     window.addEventListener('popstate', syncRouteFromLocation);
     return () => window.removeEventListener('popstate', syncRouteFromLocation);
-  }, [connectAndEnterRoom]);
+  }, [connectAndEnterRoom, scrollToTutorialSoon]);
 
   const setPlayerName = useCallback((name: string) => {
     const clean = name.trim().slice(0, 20) || 'Player';
@@ -308,13 +330,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clientRef.current?.setPlayerName(clean);
   }, []);
 
-  const mySeat = useMemo<SeatKey | null>(() => {
-    if (!room) return null;
-    for (const seat of ALL_SEATS) {
-      if (room.seats[seat]?.id === playerId) return seat;
-    }
-    return null;
+  const mySeats = useMemo<SeatKey[]>(() => {
+    if (!room) return [];
+    return getPlayerSeats(room.seats, playerId);
   }, [room, playerId]);
+
+  const mySeat = mySeats[0] ?? null;
 
   const isHost = useMemo(() => Boolean(room && room.hostId === playerId), [room, playerId]);
 
@@ -368,8 +389,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPage('lobby');
   }, [setPage]);
 
-  const takeSeat = useCallback((seat: SeatKey) => {
-    clientRef.current?.sendRoom({ type: 'room:takeSeat', seat });
+  const takeSeat = useCallback((seat: SeatKey, keepExisting: boolean = false) => {
+    clientRef.current?.sendRoom({ type: 'room:takeSeat', seat, keepExisting });
+  }, []);
+
+  const vacateSeat = useCallback((seat: SeatKey) => {
+    clientRef.current?.sendRoom({ type: 'room:vacateSeat', seat });
   }, []);
 
   const addBot = useCallback((seat?: SeatKey) => {
@@ -503,20 +528,27 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [page, practiceGame.status]);
 
   useEffect(() => {
-    if (page !== 'practice' || practiceMode !== 'bots' || practiceGame.status !== 'playing') return;
+    if (
+      page !== 'practice' ||
+      (practiceMode !== 'bots' && practiceMode !== 'dual') ||
+      practiceGame.status !== 'playing'
+    ) {
+      return;
+    }
+    const humanSeats: SeatKey[] = practiceMode === 'dual' ? ['A_w', 'B_b'] : ['A_w'];
     const timers: ReturnType<typeof setTimeout>[] = [];
 
     for (const boardId of ['A', 'B'] as BoardId[]) {
       const board = practiceGame.boards[boardId];
       const activeSeat = getSeatKey(boardId, board.turn);
-      if (activeSeat === 'A_w') continue;
+      if (humanSeats.includes(activeSeat)) continue;
 
       const delay = board.phase === 'chess' ? 620 + Math.random() * 480 : 380 + Math.random() * 280;
       const t = setTimeout(() => {
         setPracticeGame((curr) => {
           if (curr.status !== 'playing') return curr;
           const b = curr.boards[boardId];
-          if (getSeatKey(boardId, b.turn) === 'A_w') return curr;
+          if (humanSeats.includes(getSeatKey(boardId, b.turn))) return curr;
           const action = chooseBotAction(curr, boardId);
           if (!action) return curr;
 
@@ -552,6 +584,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     page,
     practiceMode,
     practiceGame.status,
+    practiceGame.startedAt,
     practiceGame.boards.A.turn,
     practiceGame.boards.A.phase,
     practiceGame.boards.B.turn,
@@ -562,6 +595,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value: GameContextValue = {
     page,
     setPage,
+    openTutorial,
     playerId,
     playerName,
     setPlayerName,
@@ -579,11 +613,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshRooms,
     room,
     mySeat,
+    mySeats,
     isHost,
     createRoom,
     joinRoom,
     leaveRoom,
     takeSeat,
+    vacateSeat,
     addBot,
     removeBot,
     startGame,

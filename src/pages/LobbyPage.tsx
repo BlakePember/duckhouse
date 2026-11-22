@@ -196,7 +196,7 @@ export const LobbyPage: React.FC = () => {
                 <PlusCircle size={19} className="dh-accent-icon" />
                 <div>
                   <h2>Create Online Game</h2>
-                  <p>Host a public table or a private invite-only room (supports Bot fill too).</p>
+                  <p>Host a public or private table — supports 2v2, 2v1, 1v1, and Bot fill.</p>
                 </div>
               </div>
             </div>
@@ -378,6 +378,9 @@ export const LobbyPage: React.FC = () => {
                       <span className={`dh-status-chip ${r.status}`}>
                         {r.status === 'waiting' ? 'Open Lobby' : r.status === 'playing' ? 'In Game' : 'Finished'}
                       </span>
+                      {r.matchFormat && r.matchFormat !== '2v2' && (
+                        <span className="dh-status-chip format">{r.matchFormat}</span>
+                      )}
                     </div>
                     <div className="dh-room-row-meta">
                       <span>Host: {r.hostName}</span>

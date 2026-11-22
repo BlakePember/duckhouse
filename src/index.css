@@ -411,8 +411,8 @@ button {
 /* ===== Home Page ===== */
 .dh-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
-  gap: 34px;
+  grid-template-columns: minmax(0, 0.96fr) minmax(0, 1.08fr);
+  gap: 28px;
   align-items: center;
   padding: 18px 0 34px;
 }
@@ -496,53 +496,160 @@ button {
   background: var(--bg-elev);
   border: 1px solid var(--border);
   border-radius: 20px;
-  padding: 18px;
+  padding: 16px 18px;
   box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .dh-hero-card-top {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 6px;
+}
+
+.dh-hero-stepbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 11px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+}
+
+.dh-hero-step-tab {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 750;
+  white-space: nowrap;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.dh-hero-step-tab:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.dh-hero-step-tab.active {
+  background: var(--bg-elev);
+  color: var(--text);
+  border-color: var(--border-strong);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16);
+}
+
+.dh-hero-play-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.dh-hero-play-btn:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
 }
 
 .dh-mini-arena {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
 }
 
 .dh-mini-board-box {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 6px;
+  min-width: 0;
+  transition: opacity 200ms ease;
+}
+
+.dh-mini-board-box.calm {
+  opacity: 0.88;
+}
+
+.dh-mini-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 6px;
 }
 
 .dh-mini-label {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--text);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.dh-mini-seat-tag {
+  font-size: 0.66rem;
+  font-weight: 750;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.dh-mini-seat-tag.emerald {
+  background: color-mix(in srgb, var(--team-1) 18%, transparent);
+  color: var(--team-1);
+}
+
+.dh-mini-grid-wrap {
+  position: relative;
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid var(--border-strong);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.dh-mini-board-box.active-turn .dh-mini-grid-wrap {
+  border-color: var(--team-1);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--team-1) 24%, transparent);
+}
+
+.dh-mini-board-box.active-duck .dh-mini-grid-wrap {
+  border-color: var(--duck-gold);
+  box-shadow: 0 0 0 3px var(--duck-glow);
 }
 
 .dh-mini-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
   aspect-ratio: 1;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 2px solid var(--border-strong);
+  width: 100%;
 }
 
 .dh-mini-sq {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 4px;
+  aspect-ratio: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .dh-mini-sq.light {
@@ -553,7 +660,78 @@ button {
   background: var(--sq-dark);
 }
 
-.dh-mini-sq img {
+.dh-mini-sq.hl-from::after,
+.dh-mini-sq.hl-capture::after,
+.dh-mini-sq.hl-duck-from::after,
+.dh-mini-sq.hl-duck-to::after,
+.dh-mini-sq.hl-threat::after,
+.dh-mini-sq.hl-drop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.dh-mini-sq.hl-from::after {
+  background: color-mix(in srgb, var(--team-1) 28%, transparent);
+}
+
+.dh-mini-sq.hl-capture::after {
+  background: color-mix(in srgb, var(--team-1) 36%, transparent);
+  box-shadow: inset 0 0 0 2px var(--team-1);
+}
+
+.dh-mini-sq.hl-duck-from::after {
+  background: color-mix(in srgb, var(--duck-gold) 24%, transparent);
+}
+
+.dh-mini-sq.hl-duck-to::after {
+  background: color-mix(in srgb, var(--duck-gold) 42%, transparent);
+  box-shadow: inset 0 0 0 2.5px var(--duck-gold);
+}
+
+.dh-mini-sq.hl-threat::after {
+  background: color-mix(in srgb, var(--danger) 32%, transparent);
+  box-shadow: inset 0 0 0 2px var(--danger);
+}
+
+.dh-mini-sq.hl-drop::after {
+  background: color-mix(in srgb, var(--duck-gold) 36%, transparent);
+  box-shadow: inset 0 0 0 2.5px var(--duck-gold);
+}
+
+.dh-mini-coord {
+  position: absolute;
+  font-size: 0.58rem;
+  font-weight: 850;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.78;
+}
+
+.dh-mini-sq.light .dh-mini-coord {
+  color: var(--sq-dark);
+}
+
+.dh-mini-sq.dark .dh-mini-coord {
+  color: var(--sq-light);
+}
+
+.dh-mini-coord.rank {
+  top: 2px;
+  left: 3px;
+}
+
+.dh-mini-coord.file {
+  bottom: 2px;
+  right: 3px;
+}
+
+.dh-mini-piece,
+.dh-mini-duck {
+  position: relative;
+  z-index: 3;
   width: 82%;
   height: 82%;
   object-fit: contain;
@@ -563,39 +741,857 @@ button {
   filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.35));
 }
 
+.dh-mini-cap-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 5;
+  padding: 1px 4px;
+  border-radius: 5px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.56rem;
+  font-weight: 850;
+  line-height: 1.2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.dh-mini-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.dh-mini-pocket {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  min-height: 30px;
+  padding: 4px 7px;
+  border-radius: 8px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  font-size: 0.68rem;
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.dh-mini-pocket.received {
+  border-color: var(--team-1);
+  background: color-mix(in srgb, var(--team-1) 14%, var(--bg-soft));
+}
+
+.dh-mini-pocket.duck-phase {
+  border-color: var(--duck-gold);
+  background: color-mix(in srgb, var(--duck-gold) 14%, var(--bg-soft));
+}
+
+.dh-mini-pocket.chess-phase {
+  border-color: color-mix(in srgb, var(--team-1) 60%, var(--border));
+}
+
+.dh-mini-pocket-lbl {
+  color: var(--text-muted);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dh-mini-pocket-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dh-mini-pocket-item img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  background: color-mix(in srgb, var(--sq-light) 80%, transparent);
+  border-radius: 5px;
+  padding: 1px;
+}
+
+.dh-mini-pocket-item img.spent {
+  opacity: 0.35;
+}
+
+.dh-mini-pocket-tag {
+  font-size: 0.64rem;
+  font-weight: 850;
+  padding: 1px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.dh-mini-pocket-tag.new {
+  background: var(--team-1);
+  color: #0f1a13;
+}
+
+.dh-mini-pocket-tag.gold {
+  background: var(--duck-gold);
+  color: #1a1506;
+}
+
+.dh-mini-pocket-tag.ready {
+  background: var(--bg-elev);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+}
+
+.dh-mini-pocket-tag.dropped {
+  background: color-mix(in srgb, var(--duck-gold) 22%, transparent);
+  color: var(--duck-gold);
+}
+
 .dh-mini-foot {
-  font-size: 0.75rem;
+  font-size: 0.73rem;
+  font-weight: 600;
   color: var(--text-muted);
   text-align: center;
+  line-height: 1.3;
 }
 
 .dh-transfer-badge {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
   text-align: center;
-  max-width: 96px;
+  max-width: 84px;
+  padding-top: 66px;
 }
 
-.dh-mascot {
-  width: 68px;
-  height: 68px;
+.dh-transfer-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 7px 9px;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-soft);
+}
+
+.dh-transfer-chip.emerald {
+  border-color: var(--team-1);
+  background: color-mix(in srgb, var(--team-1) 18%, var(--bg-soft));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--team-1) 24%, transparent);
+}
+
+.dh-transfer-chip.gold {
+  border-color: var(--duck-gold);
+  background: color-mix(in srgb, var(--duck-gold) 18%, var(--bg-soft));
+  color: var(--duck-gold);
+}
+
+.dh-transfer-piece {
+  width: 26px;
+  height: 26px;
   object-fit: contain;
-  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35));
-  animation: duckFloat 3s ease-in-out infinite;
+  background: color-mix(in srgb, var(--sq-light) 82%, transparent);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.dh-transfer-arrow {
+  color: var(--team-1);
+  animation: arrowNudge 1.3s ease-in-out infinite;
+}
+
+@keyframes arrowNudge {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(3px); }
 }
 
 .dh-transfer-badge span {
-  font-size: 0.72rem;
+  font-size: 0.69rem;
+  font-weight: 750;
+  color: var(--text-muted);
+  line-height: 1.28;
+}
+
+.dh-transfer-badge.step-0 span {
+  color: var(--team-1);
+}
+
+.dh-transfer-badge.step-1 span,
+.dh-transfer-badge.step-2 span {
+  color: var(--duck-gold);
+}
+
+.dh-hero-explainer {
+  padding: 11px 13px;
+  border-radius: 12px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+}
+
+.dh-hero-explainer-title {
+  font-size: 0.86rem;
+  font-weight: 800;
+  margin-bottom: 3px;
+  color: var(--text);
+}
+
+.dh-hero-explainer-body {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.48;
+  color: var(--text-muted);
+}
+
+.dh-hero-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dh-hero-stepper-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dh-mini-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--text);
+}
+
+.dh-mini-nav-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
+.dh-hero-step-counter {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.dh-hero-tutorial-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-soft));
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 750;
+  transition: background 140ms ease;
+}
+
+.dh-hero-tutorial-cta:hover {
+  background: color-mix(in srgb, var(--accent) 20%, var(--bg-soft));
+}
+
+/* ===== Interactive Tutorial Section ===== */
+.dh-tutorial-section {
+  scroll-margin-top: 78px;
+  margin: 10px 0 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dh-tut-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.dh-tut-heading {
+  margin: 0 0 6px;
+  font-size: clamp(1.45rem, 2.6vw, 2rem);
+  font-weight: 850;
+  letter-spacing: -0.025em;
+}
+
+.dh-tut-subheading {
+  margin: 0;
+  font-size: 0.94rem;
+  color: var(--text-muted);
+  max-width: 620px;
+  line-height: 1.5;
+}
+
+.dh-tut-header-right {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.dh-tut-progress-box {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 170px;
+  padding: 8px 12px;
+  border-radius: 11px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+}
+
+.dh-tut-progress-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.dh-tut-progress-label strong {
+  color: var(--text);
+}
+
+.dh-tut-progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-soft);
+  overflow: hidden;
+}
+
+.dh-tut-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--team-1), var(--duck-gold));
+  transition: width 260ms ease;
+}
+
+.dh-piece-guide {
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow);
+}
+
+.dh-piece-guide-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 0.86rem;
+}
+
+.dh-piece-guide-head span {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.dh-piece-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.dh-piece-guide-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+}
+
+.dh-piece-guide-card.duck {
+  border-color: color-mix(in srgb, var(--duck-gold) 55%, var(--border));
+  background: color-mix(in srgb, var(--duck-gold) 9%, var(--bg-soft));
+}
+
+.dh-piece-guide-card img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--sq-light) 75%, var(--bg-elev));
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.dh-piece-guide-name {
+  font-size: 0.84rem;
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+
+.dh-piece-guide-card p {
+  margin: 0 0 4px;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.dh-piece-guide-note {
+  display: inline-block;
+  font-size: 0.71rem;
   font-weight: 700;
   color: var(--duck-gold);
   line-height: 1.3;
 }
 
-@keyframes duckFloat {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-5px); }
+.dh-tut-tabs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.dh-tut-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 10px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+  transition: all 140ms ease;
+}
+
+.dh-tut-tab:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+  background: var(--bg-soft);
+}
+
+.dh-tut-tab.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-elev));
+  color: var(--text);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.dh-tut-tab.completed .dh-tut-tab-check {
+  color: var(--team-1);
+}
+
+.dh-tut-tab-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dh-tut-tab-num {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-strong);
+  font-size: 0.7rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dh-tut-tab.active .dh-tut-tab-num {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+.dh-tut-tab-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dh-tut-workspace.layout-single {
+  display: grid;
+  grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.dh-tut-workspace.layout-dual {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.dh-tut-single-board-wrap {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.dh-tut-dual-arena {
+  display: grid;
+  grid-template-columns: minmax(0, 390px) minmax(110px, 145px) minmax(0, 390px);
+  justify-content: center;
+  align-items: start;
+  gap: 14px;
+}
+
+.dh-tut-dual-bridge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  padding: 12px 10px;
+  margin-top: 130px;
+  border-radius: 12px;
+  background: var(--bg-soft);
+  border: 1px dashed var(--border-strong);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  line-height: 1.35;
+  transition: all 220ms ease;
+}
+
+.dh-tut-dual-bridge.glow {
+  border-style: solid;
+  border-color: var(--team-1);
+  background: color-mix(in srgb, var(--team-1) 16%, var(--bg-soft));
+  color: var(--team-1);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--team-1) 28%, transparent);
+}
+
+.dh-tut-bridge-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-strong);
+  color: var(--team-1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dh-tut-board-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  transition: border-color 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+}
+
+.dh-tut-board-col.is-active {
+  border-color: color-mix(in srgb, var(--team-1) 65%, var(--border));
+}
+
+.dh-tut-board-col.is-active.is-duck-phase {
+  border-color: var(--duck-gold);
+}
+
+.dh-tut-board-col.is-waiting {
+  opacity: 0.9;
+}
+
+.dh-tut-board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.dh-tut-board-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dh-tut-seat-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  border: 1px solid var(--border-strong);
+}
+
+.dh-tut-seat-dot.white {
+  background: #f5f5ef;
+}
+
+.dh-tut-seat-dot.black {
+  background: #1b201c;
+}
+
+.dh-tut-phase-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--text-muted);
+}
+
+.dh-tut-phase-badge.active {
+  color: var(--team-1);
+  border-color: color-mix(in srgb, var(--team-1) 50%, transparent);
+  background: color-mix(in srgb, var(--team-1) 14%, var(--bg-elev));
+}
+
+.dh-tut-phase-badge.duck {
+  color: var(--duck-gold);
+  border-color: var(--duck-gold);
+  background: color-mix(in srgb, var(--duck-gold) 18%, var(--bg-elev));
+}
+
+.dh-tut-phase-badge.done {
+  color: var(--team-1);
+  border-color: var(--team-1);
+}
+
+.dh-tut-pocket-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dh-tut-transfer-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--team-1) 18%, var(--bg-elev));
+  border: 1px solid var(--team-1);
+  color: var(--team-1);
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.dh-tut-coach {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.dh-tut-lesson-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dh-tut-lesson-num {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.dh-tut-lesson-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 850;
+  letter-spacing: -0.02em;
+}
+
+.dh-tut-why {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.56;
+  color: var(--text-muted);
+}
+
+.dh-tut-step-card {
+  padding: 15px 16px;
+  border-radius: 13px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dh-tut-step-card.phase-chess {
+  border-left: 4px solid var(--team-1);
+}
+
+.dh-tut-step-card.phase-duck {
+  border-left: 4px solid var(--duck-gold);
+  background: color-mix(in srgb, var(--duck-gold) 10%, var(--bg-soft));
+}
+
+.dh-tut-step-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dh-tut-step-badge {
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--team-1);
+}
+
+.dh-tut-step-card.phase-duck .dh-tut-step-badge {
+  color: var(--duck-gold);
+}
+
+.dh-tut-step-dots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dh-tut-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.dh-tut-dot.done {
+  background: var(--team-1);
+}
+
+.dh-tut-dot.active {
+  background: var(--duck-gold);
+  transform: scale(1.2);
+}
+
+.dh-tut-step-prompt {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.dh-tut-step-subtip {
+  margin: 0;
+  font-size: 0.81rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.dh-tut-hint-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--duck-gold) 14%, var(--bg-elev));
+  border: 1px solid color-mix(in srgb, var(--duck-gold) 45%, transparent);
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.dh-tut-hint-box svg {
+  color: var(--duck-gold);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.dh-tut-complete-card {
+  padding: 16px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--team-1) 14%, var(--bg-soft));
+  border: 1px solid var(--team-1);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dh-tut-complete-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.02rem;
+  color: var(--team-1);
+}
+
+.dh-tut-complete-card p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.dh-tut-complete-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.dh-tut-feedback {
+  padding: 10px 13px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  font-weight: 600;
+  border: 1px solid var(--border);
+}
+
+.dh-tut-feedback.kind-success {
+  background: color-mix(in srgb, var(--team-1) 14%, var(--bg-soft));
+  border-color: color-mix(in srgb, var(--team-1) 50%, transparent);
+  color: var(--text);
+}
+
+.dh-tut-feedback.kind-nudge {
+  background: color-mix(in srgb, var(--team-2) 15%, var(--bg-soft));
+  border-color: color-mix(in srgb, var(--team-2) 55%, transparent);
+  color: var(--text);
+}
+
+.dh-tut-feedback.kind-info {
+  background: color-mix(in srgb, var(--duck-gold) 14%, var(--bg-soft));
+  border-color: color-mix(in srgb, var(--duck-gold) 50%, transparent);
+  color: var(--text);
+}
+
+.dh-tut-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.dh-tut-nav-pair {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .dh-feature-strip {
@@ -1127,6 +2123,12 @@ button {
   color: var(--text-muted);
 }
 
+.dh-status-chip.format {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+}
+
 .dh-room-row-meta {
   display: flex;
   align-items: center;
@@ -1229,13 +2231,31 @@ button {
 }
 
 .dh-vs-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
   font-weight: 900;
   font-size: 0.9rem;
   color: var(--text-muted);
-  padding: 8px 10px;
+  padding: 8px 11px;
   border-radius: 999px;
   background: var(--bg-soft);
   border: 1px solid var(--border);
+}
+
+.dh-vs-divider.has-format {
+  border-radius: 14px;
+  border-color: color-mix(in srgb, var(--team-1) 45%, var(--border));
+  background: color-mix(in srgb, var(--team-1) 10%, var(--bg-soft));
+}
+
+.dh-vs-divider small {
+  font-size: 0.7rem;
+  font-weight: 850;
+  color: var(--team-1);
+  letter-spacing: 0.04em;
 }
 
 .dh-team-column {
@@ -1256,6 +2276,14 @@ button {
   border-top: 3px solid var(--team-2);
 }
 
+.dh-team-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .dh-team-header h3 {
   margin: 0;
   font-size: 1rem;
@@ -1264,6 +2292,18 @@ button {
 .dh-team-header span {
   font-size: 0.76rem;
   color: var(--text-muted);
+}
+
+.dh-tag.tag-solo {
+  background: color-mix(in srgb, var(--team-1) 18%, transparent);
+  color: var(--team-1);
+  border: 1px solid color-mix(in srgb, var(--team-1) 42%, transparent);
+}
+
+.dh-team-column.team-2 .dh-tag.tag-solo {
+  background: color-mix(in srgb, var(--team-2) 18%, transparent);
+  color: var(--team-2);
+  border-color: color-mix(in srgb, var(--team-2) 42%, transparent);
 }
 
 .dh-seat-card {
@@ -1312,7 +2352,13 @@ button {
 
 .dh-seat-empty-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.dh-release-seat-btn {
+  padding: 4px 8px;
+  font-size: 0.74rem;
 }
 
 .dh-waiting-footer {
@@ -1471,6 +2517,12 @@ button {
   border-radius: 999px;
   background: var(--bg-elev);
   border: 1px solid var(--border);
+}
+
+.dh-board-phase-tag.your-turn {
+  color: var(--team-1);
+  border-color: color-mix(in srgb, var(--team-1) 55%, transparent);
+  background: color-mix(in srgb, var(--team-1) 14%, var(--bg-elev));
 }
 
 .dh-board-phase-tag.duck {
@@ -1634,7 +2686,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
   padding: 5px 10px;
   border-radius: 10px;
   background: var(--bg-elev);
@@ -1688,10 +2741,32 @@ button {
   background: var(--sq-light);
 }
 
+.dh-pocket.just-received {
+  border-color: var(--team-1);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--team-1) 28%, transparent);
+}
+
 .dh-pocket-slot.selected {
   border-color: var(--duck-gold);
   background: color-mix(in srgb, var(--duck-gold) 22%, var(--bg-soft));
   box-shadow: 0 0 0 2px var(--duck-glow);
+}
+
+.dh-pocket-slot.tutorial-highlight {
+  border-color: var(--duck-gold);
+  box-shadow: 0 0 0 3px var(--duck-glow);
+  animation: tutPocketPulse 1.2s ease-in-out infinite;
+}
+
+.dh-pocket-slot.tutorial-received {
+  border-color: var(--team-1);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--team-1) 40%, transparent);
+  animation: tutPocketPulse 1s ease-in-out infinite;
+}
+
+@keyframes tutPocketPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
 }
 
 .dh-pocket-slot img {
@@ -1729,19 +2804,24 @@ button {
   user-select: none;
 }
 
-.dh-board-wrapper.duck-phase-active {
-  border-color: var(--duck-gold);
-  box-shadow: 0 0 0 4px var(--duck-glow), var(--shadow);
+.dh-board-wrapper.turn-active {
+  border-color: color-mix(in srgb, var(--team-1) 75%, var(--border-strong));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--team-1) 24%, transparent), var(--shadow);
 }
 
 .dh-board-wrapper.drop-phase-active {
   border-color: var(--accent);
 }
 
+.dh-board-wrapper.duck-phase-active {
+  border-color: var(--duck-gold);
+  box-shadow: 0 0 0 4px var(--duck-glow), var(--shadow);
+}
+
 .dh-board-grid {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  grid-template-rows: repeat(8, 1fr);
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-rows: repeat(8, minmax(0, 1fr));
   aspect-ratio: 1;
   width: 100%;
 }
@@ -1752,6 +2832,9 @@ button {
   align-items: center;
   justify-content: center;
   aspect-ratio: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .dh-square.light {
@@ -1788,6 +2871,46 @@ button {
 
 .dh-square.legal-drop {
   cursor: pointer;
+}
+
+.dh-square.hint-from::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 6px;
+  border: 3px solid var(--team-1);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--team-1) 55%, transparent);
+  z-index: 2;
+  pointer-events: none;
+  animation: tutSquarePulse 1.25s ease-in-out infinite;
+}
+
+.dh-square.hint-target::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 6px;
+  border: 3px solid var(--duck-gold);
+  background: color-mix(in srgb, var(--duck-gold) 26%, transparent);
+  box-shadow: 0 0 12px var(--duck-glow);
+  z-index: 2;
+  pointer-events: none;
+  animation: tutSquarePulse 1.25s ease-in-out infinite;
+}
+
+.dh-square.threat-square::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--danger) 36%, transparent);
+  box-shadow: inset 0 0 0 3px var(--danger);
+  z-index: 2;
+  pointer-events: none;
+}
+
+@keyframes tutSquarePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
 
 .dh-coord-rank,
@@ -2293,6 +3416,8 @@ button {
 .dh-modal-footer {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 /* ===== Responsive ===== */
@@ -2305,6 +3430,10 @@ button {
     display: grid;
     grid-template-columns: 1fr 1fr;
   }
+
+  .dh-tut-dual-arena {
+    grid-template-columns: minmax(0, 1fr) 118px minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 960px) {
@@ -2314,6 +3443,31 @@ button {
 
   .dh-feature-strip {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .dh-tut-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dh-tut-workspace.layout-single {
+    grid-template-columns: 1fr;
+  }
+
+  .dh-tut-dual-arena {
+    grid-template-columns: 1fr;
+    max-width: 460px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .dh-tut-dual-bridge {
+    margin-top: 0;
+    flex-direction: row;
+    padding: 8px 12px;
+  }
+
+  .dh-tut-bridge-badge {
+    transform: rotate(90deg);
   }
 
   .dh-lobby-top-grid,
@@ -2355,6 +3509,14 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .dh-tut-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dh-hero-stepbar {
+    flex-wrap: wrap;
+  }
+
   .dh-mini-arena {
     grid-template-columns: 1fr;
   }
@@ -2362,6 +3524,11 @@ button {
   .dh-transfer-badge {
     max-width: none;
     flex-direction: row;
+    padding-top: 0;
+  }
+
+  .dh-transfer-arrow {
+    transform: rotate(90deg);
   }
 
   .dh-nav-btn span {

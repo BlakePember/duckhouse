@@ -1,10 +1,11 @@
 import React from 'react';
-import { ArrowRight, Bot, Crown, Globe, Lock, Shuffle, Sparkles, Users } from 'lucide-react';
+import { ArrowRight, Bot, Crown, Globe, GraduationCap, Lock, Shuffle, Sparkles, Users } from 'lucide-react';
 import { useGame } from '../context/GameContext';
-import { assetUrl } from '../utils/routes';
+import { HeroExplainerCard } from '../components/HeroExplainerCard';
+import { TutorialSection } from '../components/TutorialSection';
 
 export const HomePage: React.FC = () => {
-  const { setPage, setShowRules, startPractice, connected, matchmaking } = useGame();
+  const { setPage, setShowRules, openTutorial, startPractice, connected, matchmaking } = useGame();
 
   return (
     <main className="dh-page dh-home">
@@ -37,6 +38,15 @@ export const HomePage: React.FC = () => {
             <button
               type="button"
               className="dh-btn dh-btn-secondary dh-btn-lg"
+              onClick={openTutorial}
+            >
+              <GraduationCap size={18} />
+              <span>Interactive Tutorial</span>
+            </button>
+
+            <button
+              type="button"
+              className="dh-btn dh-btn-secondary dh-btn-lg"
               onClick={() => startPractice('bots')}
             >
               <Bot size={18} />
@@ -58,66 +68,16 @@ export const HomePage: React.FC = () => {
               Read full rules ↗
             </button>
             <span className="dh-sep">•</span>
-            <span>Matchmake with randoms or create private rooms with invite codes</span>
+            <span>New to chess variants? Try the 2-minute interactive tutorial below!</span>
           </div>
         </div>
 
-        <div className="dh-hero-visual" aria-label="Duckhouse dual-board illustration">
-          <div className="dh-hero-card">
-            <div className="dh-hero-card-top">
-              <span className="dh-pill-badge emerald">TEAM EMERALD · A-White + B-Black</span>
-              <span className="dh-pill-badge amber">TEAM AMBER · A-Black + B-White</span>
-            </div>
-
-            <div className="dh-mini-arena">
-              <div className="dh-mini-board-box">
-                <div className="dh-mini-label">Board A</div>
-                <div className="dh-mini-grid">
-                  {Array.from({ length: 16 }).map((_, idx) => {
-                    const r = Math.floor(idx / 4);
-                    const c = idx % 4;
-                    const light = (r + c) % 2 === 0;
-                    return (
-                      <div key={idx} className={`dh-mini-sq ${light ? 'light' : 'dark'}`}>
-                        {idx === 1 && <img src={assetUrl('pieces/king-b.svg')} alt="" />}
-                        {idx === 5 && <img src={assetUrl('duck.png')} alt="Duck" className="dh-mini-duck" />}
-                        {idx === 10 && <img src={assetUrl('pieces/knight-w.svg')} alt="" />}
-                        {idx === 14 && <img src={assetUrl('pieces/queen-w.svg')} alt="" />}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="dh-mini-foot">Duck blocks e6 · Knight jumps!</div>
-              </div>
-
-              <div className="dh-transfer-badge">
-                <img src={assetUrl('duck.png')} alt="Duckhouse Mascot" className="dh-mascot" />
-                <span>Captures → Partner Pocket</span>
-              </div>
-
-              <div className="dh-mini-board-box">
-                <div className="dh-mini-label">Board B</div>
-                <div className="dh-mini-grid">
-                  {Array.from({ length: 16 }).map((_, idx) => {
-                    const r = Math.floor(idx / 4);
-                    const c = idx % 4;
-                    const light = (r + c) % 2 === 0;
-                    return (
-                      <div key={idx} className={`dh-mini-sq ${light ? 'light' : 'dark'}`}>
-                        {idx === 2 && <img src={assetUrl('pieces/king-w.svg')} alt="" />}
-                        {idx === 6 && <img src={assetUrl('pieces/rook-b.svg')} alt="" />}
-                        {idx === 9 && <img src={assetUrl('duck.png')} alt="Duck" className="dh-mini-duck" />}
-                        {idx === 13 && <img src={assetUrl('pieces/bishop-w.svg')} alt="" />}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="dh-mini-foot">Drop N@f3 → Move Duck!</div>
-              </div>
-            </div>
-          </div>
+        <div className="dh-hero-visual" aria-label="Duckhouse interactive dual-board walkthrough">
+          <HeroExplainerCard onStartTutorial={openTutorial} />
         </div>
       </section>
+
+      <TutorialSection />
 
       <section className="dh-feature-strip">
         <div className="dh-feature-card">

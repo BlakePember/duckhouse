@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   BoardState,
   Color,
@@ -9,11 +9,9 @@ import {
 import {
   FILES,
   RANKS,
-  colOf,
   getLegalDropSquares,
   getLegalDuckSquares,
   getLegalMovesForSquare,
-  rowOf,
   toSquare,
 } from '../../shared/engine';
 import { assetUrl } from '../utils/routes';
@@ -39,6 +37,10 @@ interface ChessBoardProps {
   onDropMove: (pieceType: DroppablePieceType, to: number) => void;
   onDuckMove: (to: number) => void;
   compact?: boolean;
+  highlightTurn?: boolean;
+  hintFromSquares?: number[];
+  hintTargetSquares?: number[];
+  threatSquares?: number[];
 }
 
 export const ChessBoard: React.FC<ChessBoardProps> = ({
@@ -51,10 +53,33 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
   onDropMove,
   onDuckMove,
   compact = false,
+  highlightTurn = false,
+  hintFromSquares,
+  hintTargetSquares,
+  threatSquares,
 }) => {
   const [selectedSquare, setSelectedSquare] = useState<number | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<{ from: number; to: number } | null>(null);
   const [hoveredSquare, setHoveredSquare] = useState<number | null>(null);
+
+  // Clear stale selection if phase/turn/canAct changes or selected piece is no longer movable
+  useEffect(() => {
+    if (!canAct || board.phase !== 'chess') {
+      setSelectedSquare(null);
+      setPendingPromotion(null);
+      return;
+    }
+    if (selectedSquare !== null) {
+      const p = board.squares[selectedSquare];
+      if (!p || p.color !== board.turn) {
+        setSelectedSquare(null);
+      }
+    }
+  }, [board, canAct, selectedSquare]);
+
+  const hintFromSet = useMemo(() => new Set(hintFromSquares ?? []), [hintFromSquares]);
+  const hintTargetSet = useMemo(() => new Set(hintTargetSquares ?? []), [hintTargetSquares]);
+  const threatSet = useMemo(() => new Set(threatSquares ?? []), [threatSquares]);
 
   const isDuckPhase = canAct && board.phase === 'duck';
 
@@ -144,7 +169,15 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
     if (!data) return;
 
     if (data.startsWith('drop:') && board.phase === 'chess') {
-      const pieceType = data.slice(5) as DroppablePieceType;
+      const parts = data.split(':');
+      let pieceType: DroppablePieceType | null = null;
+      if (parts.length === 3) {
+        if (parts[1] !== board.id) return;
+        pieceType = parts[2] as DroppablePieceType;
+      } else if (parts.length === 2) {
+        pieceType = parts[1] as DroppablePieceType;
+      }
+      if (!pieceType) return;
       const legalDrops = getLegalDropSquares(board, pieceType);
       if (legalDrops.includes(targetSq)) {
         onDropMove(pieceType, targetSq);
@@ -154,7 +187,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
       return;
     }
 
-    if (data === 'duck' && board.phase === 'duck') {
+    if ((data === 'duck' || data === `duck:${board.id}`) && board.phase === 'duck') {
       if (legalDuckSet.has(targetSq)) {
         onDuckMove(targetSq);
       }
@@ -162,7 +195,15 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
     }
 
     if (data.startsWith('sq:') && board.phase === 'chess') {
-      const fromSq = Number(data.slice(3));
+      const parts = data.split(':');
+      let fromSq = NaN;
+      if (parts.length === 3) {
+        if (parts[1] !== board.id) return;
+        fromSq = Number(parts[2]);
+      } else if (parts.length === 2) {
+        fromSq = Number(parts[1]);
+      }
+      if (Number.isNaN(fromSq)) return;
       const move = getLegalMovesForSquare(board, fromSq).find((m) => m.to === targetSq);
       if (move) {
         if (move.isPromotion) {
@@ -175,11 +216,13 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
     }
   };
 
+  const showTurnHighlight = highlightTurn && canAct && board.phase === 'chess' && !selectedDrop;
+
   return (
     <div
-      className={`dh-board-wrapper ${compact ? 'compact' : ''} ${isDuckPhase ? 'duck-phase-active' : ''} ${
-        selectedDrop ? 'drop-phase-active' : ''
-      }`}
+      className={`dh-board-wrapper ${compact ? 'compact' : ''} ${showTurnHighlight ? 'turn-active' : ''} ${
+        isDuckPhase ? 'duck-phase-active' : ''
+      } ${selectedDrop ? 'drop-phase-active' : ''}`}
     >
       <div className="dh-board-grid" role="grid" aria-label={`Board ${board.id}`}>
         {displayRows.map((r, rIdx) =>
@@ -195,6 +238,9 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
             const isLastFrom = board.lastMove?.from === sq;
             const isLastTo = board.lastMove?.to === sq;
             const isLastDuckTo = board.lastDuckMove?.to === sq;
+            const isHintFrom = hintFromSet.has(sq);
+            const isHintTarget = hintTargetSet.has(sq);
+            const isThreat = threatSet.has(sq);
             const showRank = cIdx === 0;
             const showFile = rIdx === 7;
             const showDuckGhost = isDuckPhase && isLegalDuck && hoveredSquare === sq;
@@ -208,6 +254,9 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
               isLegalDrop ? 'legal-drop' : '',
               isLegalDuck ? 'legal-duck' : '',
               hasDuck ? 'has-duck' : '',
+              isHintFrom ? 'hint-from' : '',
+              isHintTarget ? 'hint-target' : '',
+              isThreat ? 'threat-square' : '',
             ]
               .filter(Boolean)
               .join(' ');
@@ -240,7 +289,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
                       if (!canAct || board.phase !== 'chess' || piece.color !== board.turn) return;
                       onClearDrop();
                       setSelectedSquare(sq);
-                      e.dataTransfer.setData('text/plain', `sq:${sq}`);
+                      e.dataTransfer.setData('text/plain', `sq:${board.id}:${sq}`);
                     }}
                   />
                 )}
@@ -251,7 +300,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
                     draggable={isDuckPhase}
                     onDragStart={(e) => {
                       if (!isDuckPhase) return;
-                      e.dataTransfer.setData('text/plain', 'duck');
+                      e.dataTransfer.setData('text/plain', `duck:${board.id}`);
                     }}
                     title="The Duck — blocks movement & drops (Knights jump over it)"
                   >

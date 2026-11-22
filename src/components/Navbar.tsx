@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Edit3, Gamepad2, Globe, Home, Moon, Sun, Volume2, VolumeX, Check, Wifi, WifiOff } from 'lucide-react';
+import { BookOpen, Edit3, Gamepad2, Globe, GraduationCap, Home, Moon, Sun, Volume2, VolumeX, Check, Wifi, WifiOff } from 'lucide-react';
 import { useGame } from '../context/GameContext';
 import { assetUrl } from '../utils/routes';
 
@@ -7,6 +7,7 @@ export const Navbar: React.FC = () => {
   const {
     page,
     setPage,
+    openTutorial,
     playerName,
     setPlayerName,
     theme,
@@ -68,6 +69,11 @@ export const Navbar: React.FC = () => {
           >
             <Gamepad2 size={16} />
             <span>Practice</span>
+          </button>
+
+          <button type="button" className="dh-nav-btn" onClick={openTutorial}>
+            <GraduationCap size={16} />
+            <span>Tutorial</span>
           </button>
 
           <button type="button" className="dh-nav-btn" onClick={() => setShowRules(true)}>

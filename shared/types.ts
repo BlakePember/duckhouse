@@ -121,6 +121,8 @@ export interface RoomState {
   createdAt: number;
 }
 
+export type MatchFormat = '2v2' | '2v1' | '1v1';
+
 export interface PublicRoomSummary {
   code: string;
   name: string;
@@ -131,6 +133,7 @@ export interface PublicRoomSummary {
   botCount: number;
   openSeats: number;
   createdAt: number;
+  matchFormat?: MatchFormat;
 }
 
 export interface MatchmakingStatus {

@@ -1,10 +1,10 @@
 import React from 'react';
-import { Crown, ShieldAlert, Shuffle, Sparkles, X } from 'lucide-react';
+import { Crown, GraduationCap, ShieldAlert, Shuffle, Sparkles, X } from 'lucide-react';
 import { useGame } from '../context/GameContext';
 import { assetUrl } from '../utils/routes';
 
 export const RulesModal: React.FC = () => {
-  const { showRules, setShowRules } = useGame();
+  const { showRules, setShowRules, openTutorial } = useGame();
   if (!showRules) return null;
 
   return (
@@ -26,11 +26,12 @@ export const RulesModal: React.FC = () => {
         <div className="dh-rules-grid">
           <div className="dh-rule-card">
             <div className="dh-rule-icon"><Shuffle size={18} /></div>
-            <h3>1. Two Boards, Two Teams (2v2)</h3>
+            <h3>1. Two Boards, Two Teams (2v2 · 2v1 · 1v1)</h3>
             <p>
               <strong>Team Emerald</strong> plays <em>Board A White</em> + <em>Board B Black</em>.<br />
               <strong>Team Amber</strong> plays <em>Board A Black</em> + <em>Board B White</em>.<br />
-              Both boards run live side-by-side on independent clocks.
+              Both boards run live side-by-side on independent clocks. A single player can also claim both seats on the
+              same team to play both boards solo (<strong>2v1</strong> or <strong>1v1</strong>)!
             </p>
           </div>
 
@@ -67,6 +68,10 @@ export const RulesModal: React.FC = () => {
         </div>
 
         <div className="dh-modal-footer">
+          <button type="button" className="dh-btn dh-btn-secondary" onClick={openTutorial}>
+            <GraduationCap size={16} />
+            <span>Try Interactive Tutorial</span>
+          </button>
           <button type="button" className="dh-btn dh-btn-primary" onClick={() => setShowRules(false)}>
             Got it — Let’s Play!
           </button>
