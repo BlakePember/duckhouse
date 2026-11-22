@@ -26,11 +26,12 @@ export const RulesModal: React.FC = () => {
         <div className="dh-rules-grid">
           <div className="dh-rule-card">
             <div className="dh-rule-icon"><Shuffle size={18} /></div>
-            <h3>1. Two Boards, Two Teams (2v2)</h3>
+            <h3>1. Two Boards, Two Teams (2v2 · 2v1 · 1v1)</h3>
             <p>
               <strong>Team Emerald</strong> plays <em>Board A White</em> + <em>Board B Black</em>.<br />
               <strong>Team Amber</strong> plays <em>Board A Black</em> + <em>Board B White</em>.<br />
-              Both boards run live side-by-side on independent clocks.
+              Both boards run live side-by-side on independent clocks. A single player can also claim both seats on the
+              same team to play both boards solo (<strong>2v1</strong> or <strong>1v1</strong>)!
             </p>
           </div>
 

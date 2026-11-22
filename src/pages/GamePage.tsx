@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Bot,
@@ -6,6 +6,7 @@ import {
   Crown,
   Flag,
   History,
+  Layers,
   RefreshCw,
   RotateCcw,
   Users,
@@ -26,11 +27,14 @@ import {
   oppositeColor,
   otherBoard,
 } from '../../shared/types';
+import { getRoomMatchFormat } from '../../shared/seats';
 import { PracticeMode, useGame } from '../context/GameContext';
 import { ChessBoard } from '../components/ChessBoard';
 import { PocketTray } from '../components/PocketTray';
 import { PlayerClock } from '../components/PlayerClock';
 import { TeamChat } from '../components/TeamChat';
+
+const DROPPABLE_TYPES: DroppablePieceType[] = ['q', 'r', 'b', 'n', 'p'];
 
 interface GamePageProps {
   mode: 'online' | 'practice';
@@ -39,7 +43,7 @@ interface GamePageProps {
 export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
   const {
     room,
-    mySeat,
+    mySeats,
     leaveRoom,
     rematch,
     sendMove,
@@ -64,6 +68,14 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
     B: null,
   });
   const [historyBoard, setHistoryBoard] = useState<BoardId>('A');
+  const [receivedPieces, setReceivedPieces] = useState<Record<SeatKey, DroppablePieceType | null>>({
+    A_w: null,
+    A_b: null,
+    B_w: null,
+    B_b: null,
+  });
+  const prevGameRef = useRef<GameState | null>(null);
+  const receiveTimersRef = useRef<Partial<Record<SeatKey, ReturnType<typeof setTimeout>>>>({});
 
   const isOnline = mode === 'online';
   const game: GameState | null = isOnline ? room?.game ?? null : practiceGame;
@@ -78,6 +90,14 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
         B_w: { id: 'bot_opp2', name: 'DrakeEngine', isBot: true, connected: true, ready: true },
       };
     }
+    if (practiceMode === 'dual') {
+      return {
+        A_w: { id: 'human', name: playerName, isBot: false, connected: true, ready: true },
+        B_b: { id: 'human', name: playerName, isBot: false, connected: true, ready: true },
+        A_b: { id: 'bot_opp1', name: 'MallardAI', isBot: true, connected: true, ready: true },
+        B_w: { id: 'bot_opp2', name: 'DrakeEngine', isBot: true, connected: true, ready: true },
+      };
+    }
     return {
       A_w: { id: 's1', name: 'Board A White', isBot: false, connected: true, ready: true },
       B_b: { id: 's2', name: 'Board B Black', isBot: false, connected: true, ready: true },
@@ -86,25 +106,70 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
     };
   }, [isOnline, room, practiceMode, playerName]);
 
+  const activeSeats: SeatKey[] = useMemo(() => {
+    if (isOnline) return mySeats;
+    if (practiceMode === 'bots') return ['A_w'];
+    if (practiceMode === 'dual') return ['A_w', 'B_b'];
+    return [];
+  }, [isOnline, mySeats, practiceMode]);
+
+  useEffect(() => {
+    setSelectedDrops({ A: null, B: null });
+  }, [game?.startedAt, mode, practiceMode]);
+
+  useEffect(() => {
+    const timers = receiveTimersRef.current;
+    return () => {
+      Object.values(timers).forEach((t) => {
+        if (t) clearTimeout(t);
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    const prev = prevGameRef.current;
+    prevGameRef.current = game;
+    if (!game || !prev || prev.startedAt !== game.startedAt) return;
+
+    for (const seat of activeSeats) {
+      const { boardId, color } = getSeatBoardAndColor(seat);
+      const prevPocket = prev.boards[boardId].pockets[color];
+      const nextPocket = game.boards[boardId].pockets[color];
+      const arrived = DROPPABLE_TYPES.find((t) => nextPocket[t] > prevPocket[t]);
+      if (arrived) {
+        setReceivedPieces((curr) => ({ ...curr, [seat]: arrived }));
+        if (receiveTimersRef.current[seat]) {
+          clearTimeout(receiveTimersRef.current[seat]);
+        }
+        receiveTimersRef.current[seat] = setTimeout(() => {
+          setReceivedPieces((curr) => ({ ...curr, [seat]: null }));
+          delete receiveTimersRef.current[seat];
+        }, 1600);
+      }
+    }
+  }, [game, activeSeats]);
+
   if (!game) return null;
 
-  const activeSeat: SeatKey | null = isOnline ? mySeat : practiceMode === 'bots' ? 'A_w' : null;
-  const primaryBoardId: BoardId = activeSeat ? getSeatBoardAndColor(activeSeat).boardId : 'A';
+  const primarySeat: SeatKey | null = activeSeats[0] ?? null;
+  const isDualControl = activeSeats.length === 2;
+  const matchFormat = getRoomMatchFormat(seats);
+
+  const primaryBoardId: BoardId = primarySeat ? getSeatBoardAndColor(primarySeat).boardId : 'A';
   const secondaryBoardId: BoardId = otherBoard(primaryBoardId);
 
-  const primaryDefaultColor: Color = activeSeat ? getSeatBoardAndColor(activeSeat).color : 'w';
+  const primaryDefaultColor: Color = primarySeat ? getSeatBoardAndColor(primarySeat).color : 'w';
   const primaryOrientation: Color = flipped ? oppositeColor(primaryDefaultColor) : primaryDefaultColor;
-  // Partner always plays the opposite color on the other board!
+  // Partner (or your second seat on the same team) always plays the opposite color on the other board!
   const secondaryOrientation: Color = oppositeColor(primaryOrientation);
 
-  const partnerSeat: SeatKey | null = activeSeat ? getPartnerSeat(activeSeat) : null;
+  const partnerSeat: SeatKey | null = activeSeats.length === 1 ? getPartnerSeat(activeSeats[0]) : null;
 
   const canActOnBoard = (boardId: BoardId): boolean => {
     if (game.status !== 'playing') return false;
     const board = game.boards[boardId];
     if (!isOnline && practiceMode === 'sandbox') return true;
-    if (!activeSeat) return false;
-    return getSeatKey(boardId, board.turn) === activeSeat;
+    return activeSeats.includes(getSeatKey(boardId, board.turn));
   };
 
   const handleMove = (boardId: BoardId, from: number, to: number, promotion?: PromotionPieceType) => {
@@ -133,22 +198,59 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
     const topSeat = getSeatKey(boardId, topColor);
 
     const canAct = canActOnBoard(boardId);
-    const bottomCanDrop =
-      canAct && board.phase === 'chess' && board.turn === bottomColor;
-    const topCanDrop =
-      !isOnline && practiceMode === 'sandbox' && game.status === 'playing' && board.phase === 'chess' && board.turn === topColor;
+    const bottomCanDrop = canAct && board.phase === 'chess' && board.turn === bottomColor;
+    const topCanDrop = canAct && board.phase === 'chess' && board.turn === topColor;
+
+    const mySeatOnThisBoard = activeSeats.find((s) => s.startsWith(boardId)) ?? null;
+    const isTopMine = activeSeats.includes(topSeat);
+    const isBottomMine = activeSeats.includes(bottomSeat);
+    const showActiveTurnHighlight = isOnline || practiceMode !== 'sandbox';
+
+    const topPocketLabel = topCanDrop
+      ? isTopMine
+        ? 'Your Pocket (Click to Drop)'
+        : `${topColor === 'w' ? 'White' : 'Black'} Pocket (Click to Drop)`
+      : isTopMine
+      ? 'Your Pocket'
+      : `${topColor === 'w' ? 'White' : 'Black'} Pocket`;
+
+    const bottomPocketLabel = bottomCanDrop
+      ? isBottomMine
+        ? 'Your Pocket (Click to Drop)'
+        : `${bottomColor === 'w' ? 'White' : 'Black'} Pocket (Click to Drop)`
+      : isBottomMine
+      ? 'Your Pocket'
+      : `${bottomColor === 'w' ? 'White' : 'Black'} Pocket`;
 
     return (
-      <div className={`dh-board-column ${isPrimary ? 'primary' : 'secondary'}`}>
+      <div
+        key={boardId}
+        className={`dh-board-column ${isPrimary || isDualControl ? 'primary' : 'secondary'} ${
+          showActiveTurnHighlight && canAct ? 'your-turn' : ''
+        }`}
+      >
         <div className="dh-board-heading">
           <span className="dh-board-badge">
-            Board {boardId} {isPrimary && activeSeat ? '· Your Board' : partnerSeat?.startsWith(boardId) ? '· Partner’s Board' : ''}
+            Board {boardId}{' '}
+            {isDualControl && mySeatOnThisBoard
+              ? `· Your Board (${mySeatOnThisBoard.endsWith('_w') ? 'White' : 'Black'})`
+              : mySeatOnThisBoard
+              ? '· Your Board'
+              : partnerSeat?.startsWith(boardId)
+              ? '· Partner’s Board'
+              : ''}
           </span>
-          <span className={`dh-board-phase-tag ${board.phase === 'duck' ? 'duck' : ''}`}>
+          <span
+            className={`dh-board-phase-tag ${board.phase === 'duck' ? 'duck' : ''} ${
+              showActiveTurnHighlight && canAct && board.phase === 'chess' ? 'your-turn' : ''
+            }`}
+          >
             {game.status === 'finished'
               ? 'Finished'
               : board.phase === 'duck'
               ? `🦆 ${board.turn === 'w' ? 'White' : 'Black'} moving Duck`
+              : showActiveTurnHighlight && canAct
+              ? `Your Move (${board.turn === 'w' ? 'White' : 'Black'})`
               : `${board.turn === 'w' ? 'White' : 'Black'} to move`}
           </span>
         </div>
@@ -161,17 +263,19 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
           isActiveTurn={board.turn === topColor}
           phase={board.phase}
           isPlaying={game.status === 'playing'}
-          isMe={activeSeat === topSeat}
+          isMe={isTopMine}
           isPartner={partnerSeat === topSeat}
         />
 
         <PocketTray
+          boardId={boardId}
           color={topColor}
           pocket={board.pockets[topColor]}
           interactive={topCanDrop}
           selectedDrop={topCanDrop ? selectedDrops[boardId] : null}
           onSelectDrop={(piece) => setSelectedDrops((prev) => ({ ...prev, [boardId]: piece }))}
-          label={`${topColor === 'w' ? 'White' : 'Black'} Pocket`}
+          label={topPocketLabel}
+          receivedPiece={receivedPieces[topSeat]}
         />
 
         <ChessBoard
@@ -183,16 +287,19 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
           onChessMove={(from, to, promo) => handleMove(boardId, from, to, promo)}
           onDropMove={(pieceType, to) => handleDrop(boardId, pieceType, to)}
           onDuckMove={(to) => handleDuck(boardId, to)}
-          compact={!isPrimary}
+          compact={!isPrimary && !isDualControl}
+          highlightTurn={showActiveTurnHighlight}
         />
 
         <PocketTray
+          boardId={boardId}
           color={bottomColor}
           pocket={board.pockets[bottomColor]}
           interactive={bottomCanDrop}
           selectedDrop={bottomCanDrop ? selectedDrops[boardId] : null}
           onSelectDrop={(piece) => setSelectedDrops((prev) => ({ ...prev, [boardId]: piece }))}
-          label={bottomCanDrop ? 'Your Pocket (Click to Drop)' : `${bottomColor === 'w' ? 'White' : 'Black'} Pocket`}
+          label={bottomPocketLabel}
+          receivedPiece={receivedPieces[bottomSeat]}
         />
 
         <PlayerClock
@@ -203,7 +310,7 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
           isActiveTurn={board.turn === bottomColor}
           phase={board.phase}
           isPlaying={game.status === 'playing'}
-          isMe={activeSeat === bottomSeat}
+          isMe={isBottomMine}
           isPartner={partnerSeat === bottomSeat}
         />
       </div>
@@ -211,9 +318,10 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
   };
 
   // Dynamic instructional banner
-  const primaryBoard = game.boards[primaryBoardId];
-  const myTurnNow = canActOnBoard(primaryBoardId);
-  const myTeam = activeSeat ? getSeatTeam(activeSeat) : null;
+  const myTeam = primarySeat ? getSeatTeam(primarySeat) : null;
+  const myActionBoards = (['A', 'B'] as BoardId[]).filter((bId) => canActOnBoard(bId));
+  const myDuckBoards = myActionBoards.filter((bId) => game.boards[bId].phase === 'duck');
+  const myChessBoards = myActionBoards.filter((bId) => game.boards[bId].phase === 'chess');
 
   let bannerText = '';
   let bannerVariant = 'neutral';
@@ -236,21 +344,43 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
         ? `🦆 Sandbox Mode: Place the duck on ${[duckOnA ? 'Board A' : '', duckOnB ? 'Board B' : ''].filter(Boolean).join(' & ')}!`
         : '4-Seat Sandbox Mode: Move pieces or drop from pockets on either board.';
     bannerVariant = duckOnA || duckOnB ? 'duck' : 'info';
-  } else if (myTurnNow && primaryBoard.phase === 'duck') {
-    bannerText = `🦆 DUCK PHASE! Click any empty square on Board ${primaryBoardId} to place the duck.`;
+  } else if (activeSeats.length === 0) {
+    bannerText = 'Spectating live Duckhouse match.';
+    bannerVariant = 'neutral';
+  } else if (myDuckBoards.length === 2) {
+    bannerText = '🦆 DUCK PHASE on BOTH boards! Click an empty square on Board A and Board B to place each duck.';
     bannerVariant = 'duck';
-  } else if (myTurnNow) {
-    bannerText = `Your turn on Board ${primaryBoardId} — move a piece or click a pocket piece to drop it!`;
+  } else if (myDuckBoards.length === 1) {
+    const dBoard = myDuckBoards[0];
+    bannerText =
+      myChessBoards.length === 1
+        ? `🦆 DUCK PHASE on Board ${dBoard}! Place the duck (also your turn on Board ${myChessBoards[0]}).`
+        : `🦆 DUCK PHASE! Click any empty square on Board ${dBoard} to place the duck.`;
+    bannerVariant = 'duck';
+  } else if (myChessBoards.length === 2) {
+    bannerText = 'Your turn on BOTH Board A & Board B — move a piece or drop from either pocket!';
     bannerVariant = 'turn';
-  } else if (activeSeat) {
-    bannerText = `Opponent’s turn on Board ${primaryBoardId}… Watch your partner on Board ${secondaryBoardId}!`;
+  } else if (myChessBoards.length === 1) {
+    const cBoard = myChessBoards[0];
+    bannerText = `Your turn on Board ${cBoard} — move a piece or click a pocket piece to drop it!`;
+    bannerVariant = 'turn';
+  } else if (isDualControl) {
+    bannerText = 'Opponents’ turn on both boards… Get ready on Board A & Board B!';
     bannerVariant = 'neutral';
   } else {
-    bannerText = 'Spectating live Duckhouse match.';
+    bannerText = `Opponent’s turn on Board ${primaryBoardId}… Watch your partner on Board ${secondaryBoardId}!`;
     bannerVariant = 'neutral';
   }
 
   const activeHistory = game.boards[historyBoard].moveHistory;
+  const gameTitle =
+    isOnline && room
+      ? room.name
+      : practiceMode === 'bots'
+      ? 'Solo Practice vs Bots'
+      : practiceMode === 'dual'
+      ? '2v1 vs Bots'
+      : '4-Seat Sandbox';
 
   return (
     <main className="dh-page dh-game-page">
@@ -272,6 +402,13 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
               </button>
               <button
                 type="button"
+                className={`dh-seg-btn ${practiceMode === 'dual' ? 'active' : ''}`}
+                onClick={() => startPractice('dual', practiceTc)}
+              >
+                <Layers size={14} /> 2v1 (Both Boards)
+              </button>
+              <button
+                type="button"
                 className={`dh-seg-btn ${practiceMode === 'sandbox' ? 'active' : ''}`}
                 onClick={() => startPractice('sandbox', practiceTc)}
               >
@@ -281,7 +418,12 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
           )}
 
           <div className="dh-game-title-meta">
-            <strong>{isOnline && room ? room.name : practiceMode === 'bots' ? 'Solo Practice vs Bots' : '4-Seat Sandbox'}</strong>
+            <strong>{gameTitle}</strong>
+            {isOnline && matchFormat !== '2v2' && (
+              <span className="dh-pill-badge emerald">
+                <Layers size={12} /> {matchFormat}
+              </span>
+            )}
             <span className="dh-pill-badge neutral">
               <Clock size={12} /> {isOnline && room ? room.timeControl.label : practiceTc.label}
             </span>
@@ -299,7 +441,7 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
             <RotateCcw size={14} /> Flip
           </button>
 
-          {game.status === 'playing' && (activeSeat || !isOnline) && (
+          {game.status === 'playing' && (activeSeats.length > 0 || !isOnline) && (
             <button
               type="button"
               className="dh-btn dh-btn-danger dh-btn-sm"
@@ -417,7 +559,12 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
 
           {/* Online Team Chat */}
           {isOnline && room && (
-            <TeamChat messages={room.chat} mySeat={mySeat} onSend={sendChat} />
+            <TeamChat
+              messages={room.chat}
+              mySeats={mySeats}
+              isSoloTeam={isDualControl}
+              onSend={sendChat}
+            />
           )}
         </aside>
       </div>

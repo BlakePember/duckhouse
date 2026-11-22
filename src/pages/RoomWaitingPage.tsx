@@ -7,6 +7,7 @@ import {
   Copy,
   Crown,
   Globe,
+  Layers,
   Link as LinkIcon,
   Lock,
   Play,
@@ -14,7 +15,12 @@ import {
   UserPlus,
   X,
 } from 'lucide-react';
-import { ALL_SEATS, SeatKey } from '../../shared/types';
+import { ALL_SEATS, SeatKey, getSeatTeam } from '../../shared/types';
+import {
+  getRoomMatchFormat,
+  getTeamUniquePlayerCount,
+  isTeamSoloPlayer,
+} from '../../shared/seats';
 import { getSeatLabel, useGame } from '../context/GameContext';
 import { buildInviteUrl } from '../utils/routes';
 import { TeamChat } from '../components/TeamChat';
@@ -22,10 +28,11 @@ import { TeamChat } from '../components/TeamChat';
 export const RoomWaitingPage: React.FC = () => {
   const {
     room,
-    mySeat,
+    mySeats,
     isHost,
     leaveRoom,
     takeSeat,
+    vacateSeat,
     addBot,
     removeBot,
     startGame,
@@ -39,6 +46,13 @@ export const RoomWaitingPage: React.FC = () => {
 
   const filledCount = ALL_SEATS.filter((s) => room.seats[s] !== null).length;
   const openSeats = 4 - filledCount;
+  const myTeam = mySeats.length > 0 ? getSeatTeam(mySeats[0]) : null;
+  const isDualControl = mySeats.length === 2;
+  const team1Solo = isTeamSoloPlayer(room.seats, 1);
+  const team2Solo = isTeamSoloPlayer(room.seats, 2);
+  const matchFormat = getRoomMatchFormat(room.seats);
+  const team1Players = getTeamUniquePlayerCount(room.seats, 1);
+  const team2Players = getTeamUniquePlayerCount(room.seats, 2);
 
   const copyCode = () => {
     navigator.clipboard?.writeText(room.code).catch(() => {});
@@ -55,9 +69,11 @@ export const RoomWaitingPage: React.FC = () => {
 
   const renderSeatCard = (seat: SeatKey) => {
     const occupant = room.seats[seat];
-    const isMine = mySeat === seat;
+    const isMine = mySeats.includes(seat);
     const isHostSeat = occupant && occupant.id === room.hostId;
     const isWhite = seat.endsWith('_w');
+    const seatTeam = getSeatTeam(seat);
+    const isMyOpenPartnerSeat = !occupant && myTeam === seatTeam;
 
     return (
       <div
@@ -94,12 +110,47 @@ export const RoomWaitingPage: React.FC = () => {
                 <X size={15} />
               </button>
             )}
+            {isMine && isDualControl && (
+              <button
+                type="button"
+                className="dh-btn dh-btn-ghost dh-btn-sm dh-release-seat-btn"
+                onClick={() => vacateSeat(seat)}
+                title="Release this seat to go back to 1 board"
+              >
+                <X size={13} /> Release
+              </button>
+            )}
           </div>
         ) : (
           <div className="dh-seat-empty-actions">
-            <button type="button" className="dh-btn dh-btn-secondary dh-btn-sm" onClick={() => takeSeat(seat)}>
-              <UserPlus size={14} /> Sit Here
-            </button>
+            {isMyOpenPartnerSeat ? (
+              <>
+                <button
+                  type="button"
+                  className="dh-btn dh-btn-primary dh-btn-sm"
+                  onClick={() => takeSeat(seat, true)}
+                  title="Also take your partner’s seat to play both boards on this team (2v1 / 1v1)"
+                >
+                  <Layers size={14} /> Play Both
+                </button>
+                <button
+                  type="button"
+                  className="dh-btn dh-btn-secondary dh-btn-sm"
+                  onClick={() => takeSeat(seat, false)}
+                  title="Move to this seat and leave your current seat open"
+                >
+                  <UserPlus size={14} /> Move Here
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="dh-btn dh-btn-secondary dh-btn-sm"
+                onClick={() => takeSeat(seat, false)}
+              >
+                <UserPlus size={14} /> Sit Here
+              </button>
+            )}
             {isHost && (
               <button type="button" className="dh-btn dh-btn-ghost dh-btn-sm" onClick={() => addBot(seat)}>
                 <Bot size={14} /> + Bot
@@ -119,6 +170,11 @@ export const RoomWaitingPage: React.FC = () => {
         </button>
 
         <div className="dh-waiting-meta">
+          {matchFormat !== '2v2' && (
+            <span className="dh-pill-badge emerald">
+              <Layers size={12} /> {matchFormat} Mode
+            </span>
+          )}
           <span className="dh-pill-badge neutral">
             {room.visibility === 'private' ? <Lock size={12} /> : <Globe size={12} />}
             {room.visibility === 'private' ? 'Private Room' : 'Public Room'}
@@ -136,8 +192,8 @@ export const RoomWaitingPage: React.FC = () => {
               <h1>{room.name}</h1>
               <p>
                 {openSeats === 0
-                  ? 'All 4 seats are filled! Ready to start the Duckhouse match.'
-                  : `Waiting for ${openSeats} more player${openSeats > 1 ? 's' : ''}. Share the code or fill seats with Bots.`}
+                  ? `All 4 seats are filled (${matchFormat})! Ready to start the Duckhouse match.`
+                  : `Waiting for ${openSeats} more seat${openSeats > 1 ? 's' : ''}. Share the code, click Play Both on your team for 2v1, or fill with Bots.`}
               </p>
             </div>
 
@@ -160,21 +216,48 @@ export const RoomWaitingPage: React.FC = () => {
           </div>
 
           <div className="dh-teams-grid">
-            <div className="dh-team-column team-1">
+            <div className={`dh-team-column team-1 ${team1Solo ? 'solo-team' : ''}`}>
               <div className="dh-team-header">
-                <h3>Team Emerald</h3>
-                <span>Partners · Captures feed each other</span>
+                <div className="dh-team-header-row">
+                  <h3>Team Emerald</h3>
+                  {team1Solo && (
+                    <span className="dh-tag tag-solo">
+                      <Layers size={11} /> Both Boards
+                    </span>
+                  )}
+                </div>
+                <span>
+                  {team1Solo
+                    ? 'Solo player · Captures feed your other board'
+                    : 'Partners · Captures feed each other'}
+                </span>
               </div>
               {renderSeatCard('A_w')}
               {renderSeatCard('B_b')}
             </div>
 
-            <div className="dh-vs-divider">VS</div>
+            <div className={`dh-vs-divider ${matchFormat !== '2v2' ? 'has-format' : ''}`}>
+              <span>VS</span>
+              {matchFormat !== '2v2' && (
+                <small>{team1Players > 0 && team2Players > 0 ? `${team1Players}v${team2Players}` : matchFormat}</small>
+              )}
+            </div>
 
-            <div className="dh-team-column team-2">
+            <div className={`dh-team-column team-2 ${team2Solo ? 'solo-team' : ''}`}>
               <div className="dh-team-header">
-                <h3>Team Amber</h3>
-                <span>Partners · Captures feed each other</span>
+                <div className="dh-team-header-row">
+                  <h3>Team Amber</h3>
+                  {team2Solo && (
+                    <span className="dh-tag tag-solo">
+                      <Layers size={11} /> Both Boards
+                    </span>
+                  )}
+                </div>
+                <span>
+                  {team2Solo
+                    ? 'Solo player · Captures feed your other board'
+                    : 'Partners · Captures feed each other'}
+                </span>
               </div>
               {renderSeatCard('A_b')}
               {renderSeatCard('B_w')}
@@ -196,19 +279,23 @@ export const RoomWaitingPage: React.FC = () => {
                   onClick={() => startGame()}
                 >
                   <Play size={18} />
-                  <span>{openSeats > 0 ? `Need ${openSeats} More to Start` : 'Start Duckhouse Match'}</span>
+                  <span>
+                    {openSeats > 0
+                      ? `Need ${openSeats} More Seat${openSeats > 1 ? 's' : ''} to Start`
+                      : `Start ${matchFormat === '2v2' ? '' : `${matchFormat} `}Duckhouse Match`}
+                  </span>
                 </button>
               </>
             ) : (
               <div className="dh-waiting-guest-note">
-                Waiting for host to start the match… Click any open seat above to switch teams.
+                Waiting for host to start the match… Click any open seat to switch, or click Play Both on your team’s open seat for 2v1.
               </div>
             )}
           </div>
         </section>
 
         <aside className="dh-waiting-sidebar">
-          <TeamChat messages={room.chat} mySeat={mySeat} onSend={sendChat} />
+          <TeamChat messages={room.chat} mySeats={mySeats} isSoloTeam={isDualControl} onSend={sendChat} />
         </aside>
       </div>
     </main>

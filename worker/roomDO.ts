@@ -7,12 +7,19 @@ import {
   RoomState,
   RoomVisibility,
   SeatKey,
-  SeatPlayer,
   TeamId,
   TimeControl,
   getSeatKey,
   getSeatTeam,
 } from '../shared/types.js';
+import {
+  applyTakeSeat,
+  applyVacateSeat,
+  getPlayerSeats,
+  getPlayerTeam,
+  getRoomMatchFormat,
+  swapSeatsForRematch,
+} from '../shared/seats.js';
 import {
   applyChessMove,
   applyDropMove,
@@ -235,12 +242,14 @@ export class RoomDO extends DurableObject<Env> {
     server.serializeAttachment({ playerId, name } satisfies RoomAttachment);
     this.saveMetaNumber('empty_since', 0);
 
-    // Seat player or mark reconnected
-    const existingSeat = this.findPlayerSeat(state, playerId);
-    if (existingSeat) {
-      const sp = state.seats[existingSeat]!;
-      sp.connected = true;
-      sp.name = name;
+    // Seat player or mark reconnected (supports players controlling both seats on a team)
+    const existingSeats = getPlayerSeats(state.seats, playerId);
+    if (existingSeats.length > 0) {
+      for (const seat of existingSeats) {
+        const sp = state.seats[seat]!;
+        sp.connected = true;
+        sp.name = name;
+      }
     } else if (state.game.status === 'waiting') {
       const openSeat = ALL_SEATS.find((s) => state.seats[s] === null);
       if (openSeat) {
@@ -251,15 +260,22 @@ export class RoomDO extends DurableObject<Env> {
           connected: true,
           ready: true,
         };
+        state.spectators = state.spectators.filter((s) => s.id !== playerId);
         state.chat.push(makeSystemMessage(`${name} joined seat ${openSeat}.`));
       } else {
-        if (!state.spectators.some((s) => s.id === playerId)) {
+        const existingSpec = state.spectators.find((s) => s.id === playerId);
+        if (existingSpec) {
+          existingSpec.name = name;
+        } else {
           state.spectators.push({ id: playerId, name });
+          state.chat.push(makeSystemMessage(`${name} joined as spectator.`));
         }
-        state.chat.push(makeSystemMessage(`${name} joined as spectator.`));
       }
     } else {
-      if (!state.spectators.some((s) => s.id === playerId)) {
+      const existingSpec = state.spectators.find((s) => s.id === playerId);
+      if (existingSpec) {
+        existingSpec.name = name;
+      } else {
         state.spectators.push({ id: playerId, name });
       }
     }
@@ -304,9 +320,10 @@ export class RoomDO extends DurableObject<Env> {
       case 'player:identify': {
         const cleanName = (msg.name || 'Player').trim().slice(0, 20) || 'Player';
         ws.serializeAttachment({ ...att, name: cleanName });
-        const seat = this.findPlayerSeat(state, att.playerId);
-        if (seat && state.seats[seat]) {
-          state.seats[seat]!.name = cleanName;
+        for (const seat of getPlayerSeats(state.seats, att.playerId)) {
+          if (state.seats[seat]) {
+            state.seats[seat]!.name = cleanName;
+          }
         }
         for (const spec of state.spectators) {
           if (spec.id === att.playerId) spec.name = cleanName;
@@ -329,20 +346,33 @@ export class RoomDO extends DurableObject<Env> {
 
       case 'room:takeSeat': {
         if (state.game.status !== 'waiting') return;
-        if (!ALL_SEATS.includes(msg.seat) || state.seats[msg.seat] !== null) return;
-        const currSeat = this.findPlayerSeat(state, att.playerId);
-        if (currSeat) {
-          state.seats[currSeat] = null;
-        } else {
-          state.spectators = state.spectators.filter((s) => s.id !== att.playerId);
-        }
-        state.seats[msg.seat] = {
-          id: att.playerId,
-          name: att.name,
-          isBot: false,
-          connected: true,
-          ready: true,
-        };
+        const result = applyTakeSeat(
+          state.seats,
+          state.spectators,
+          { id: att.playerId, name: att.name },
+          msg.seat,
+          Boolean(msg.keepExisting)
+        );
+        if (!result.ok) return;
+        state.seats = result.seats;
+        state.spectators = result.spectators;
+        this.saveState(state);
+        this.broadcastRoomState(state);
+        await this.syncLobbySummary(state);
+        return;
+      }
+
+      case 'room:vacateSeat': {
+        if (state.game.status !== 'waiting') return;
+        const result = applyVacateSeat(
+          state.seats,
+          state.spectators,
+          { id: att.playerId, name: att.name },
+          msg.seat
+        );
+        if (!result.ok) return;
+        state.seats = result.seats;
+        state.spectators = result.spectators;
         this.saveState(state);
         this.broadcastRoomState(state);
         await this.syncLobbySummary(state);
@@ -408,7 +438,12 @@ export class RoomDO extends DurableObject<Env> {
         }
 
         state.game = createInitialGame(state.timeControl, 'playing');
-        state.chat.push(makeSystemMessage('Match started! Make your move, then move the duck!'));
+        const format = getRoomMatchFormat(state.seats);
+        state.chat.push(
+          makeSystemMessage(
+            `${format === '2v2' ? 'Match' : `${format} match`} started! Make your move, then move the duck!`
+          )
+        );
         this.saveState(state);
         this.saveBotSchedule({});
         this.saveMetaNumber('last_clock_sync', Date.now());
@@ -422,13 +457,7 @@ export class RoomDO extends DurableObject<Env> {
       case 'room:rematch': {
         if (state.game.status !== 'finished') return;
         if (ALL_SEATS.some((s) => state.seats[s] === null)) return;
-        const old = { ...state.seats };
-        state.seats = {
-          A_w: old.A_b,
-          A_b: old.A_w,
-          B_w: old.B_b,
-          B_b: old.B_w,
-        };
+        state.seats = swapSeatsForRematch(state.seats);
         state.game = createInitialGame(state.timeControl, 'playing');
         state.chat.push(makeSystemMessage(`${att.name} started a rematch (colors swapped)!`));
         this.saveState(state);
@@ -524,10 +553,10 @@ export class RoomDO extends DurableObject<Env> {
 
       case 'game:resign': {
         if (state.game.status !== 'playing') return;
-        const seat = this.findPlayerSeat(state, att.playerId);
-        if (!seat) return;
-        const team = getSeatTeam(seat);
-        const boardId: BoardId = seat.startsWith('A') ? 'A' : 'B';
+        const seats = getPlayerSeats(state.seats, att.playerId);
+        if (seats.length === 0) return;
+        const team = getSeatTeam(seats[0]);
+        const boardId: BoardId = seats[0].startsWith('A') ? 'A' : 'B';
         state.game = resignGame(state.game, team, boardId);
         state.chat.push(makeSystemMessage(`${att.name} resigned. Team ${state.game.winnerTeam} wins!`));
         this.saveState(state);
@@ -540,7 +569,8 @@ export class RoomDO extends DurableObject<Env> {
       case 'room:chat': {
         const text = (msg.text || '').trim().slice(0, 220);
         if (!text) return;
-        const seat = this.findPlayerSeat(state, att.playerId);
+        const seats = getPlayerSeats(state.seats, att.playerId);
+        const seat = seats[0] ?? null;
         const team: TeamId | null = seat ? getSeatTeam(seat) : null;
         const scope: 'all' | 'team' = msg.scope === 'team' && team !== null ? 'team' : 'all';
         const chatMsg: RoomChatMessage = {
@@ -607,11 +637,15 @@ export class RoomDO extends DurableObject<Env> {
     // In waiting rooms, prune any disconnected seat after the grace period if other players remain
     if (state.game.status === 'waiting') {
       let pruned = false;
+      const prunedPlayerIds = new Set<string>();
       for (const seat of ALL_SEATS) {
         const sp = state.seats[seat];
         if (sp && !sp.isBot && !sp.connected) {
           state.seats[seat] = null;
-          state.chat.push(makeSystemMessage(`${sp.name} disconnected from the lobby.`));
+          if (!prunedPlayerIds.has(sp.id)) {
+            prunedPlayerIds.add(sp.id);
+            state.chat.push(makeSystemMessage(`${sp.name} disconnected from the lobby.`));
+          }
           pruned = true;
         }
       }
@@ -756,21 +790,28 @@ export class RoomDO extends DurableObject<Env> {
     const hasOtherSocket = remainingSockets.some((s) => this.getAttachment(s)?.playerId === playerId);
     if (hasOtherSocket) return;
 
-    const seat = this.findPlayerSeat(state, playerId);
-    if (seat) {
+    const seats = getPlayerSeats(state.seats, playerId);
+    if (seats.length > 0) {
       if (state.game.status === 'waiting' && explicitLeave) {
-        state.seats[seat] = null;
+        for (const seat of seats) {
+          state.seats[seat] = null;
+        }
         state.chat.push(makeSystemMessage(`${playerName} left the room.`));
         this.reassignHostIfNeeded(state);
       } else {
-        const sp = state.seats[seat];
-        if (sp) sp.connected = false;
+        for (const seat of seats) {
+          const sp = state.seats[seat];
+          if (sp) sp.connected = false;
+        }
         if (state.game.status !== 'waiting') {
           state.chat.push(makeSystemMessage(`${playerName} disconnected.`));
         }
       }
     } else {
       state.spectators = state.spectators.filter((s) => s.id !== playerId);
+      if (explicitLeave) {
+        this.reassignHostIfNeeded(state);
+      }
     }
 
     const noHumansConnected = !ALL_SEATS.some((s) => {
@@ -804,24 +845,20 @@ export class RoomDO extends DurableObject<Env> {
   }
 
   private reassignHostIfNeeded(state: RoomState): void {
-    const hostPresent = ALL_SEATS.some((s) => state.seats[s]?.id === state.hostId);
+    const hostPresent =
+      ALL_SEATS.some((s) => state.seats[s]?.id === state.hostId) ||
+      state.spectators.some((s) => s.id === state.hostId);
     if (hostPresent) return;
     const nextHuman = ALL_SEATS.find((s) => state.seats[s] !== null && !state.seats[s]!.isBot);
     if (nextHuman) {
       state.hostId = state.seats[nextHuman]!.id;
+    } else if (state.spectators.length > 0) {
+      state.hostId = state.spectators[0].id;
     }
-  }
-
-  private findPlayerSeat(state: RoomState, playerId: string): SeatKey | null {
-    for (const seat of ALL_SEATS) {
-      if (state.seats[seat]?.id === playerId) return seat;
-    }
-    return null;
   }
 
   private sanitizeRoomForPlayer(state: RoomState, playerId: string): RoomState {
-    const seat = this.findPlayerSeat(state, playerId);
-    const myTeam = seat ? getSeatTeam(seat) : null;
+    const myTeam = getPlayerTeam(state.seats, playerId);
     return {
       ...state,
       chat: state.chat.filter((m) => m.scope === 'all' || (myTeam !== null && m.team === myTeam)),
@@ -858,17 +895,18 @@ export class RoomDO extends DurableObject<Env> {
   private async syncLobbySummary(state: RoomState): Promise<void> {
     if (state.visibility !== 'public') return;
 
-    let humanCount = 0;
+    const humanIds = new Set<string>();
     let botCount = 0;
     let openSeats = 0;
     for (const seat of ALL_SEATS) {
       const p = state.seats[seat];
       if (!p) openSeats++;
       else if (p.isBot) botCount++;
-      else humanCount++;
+      else humanIds.add(p.id);
     }
     const hostSeat = ALL_SEATS.find((s) => state.seats[s]?.id === state.hostId);
-    const hostName = (hostSeat && state.seats[hostSeat]?.name) || 'Host';
+    const hostSpectator = state.spectators.find((s) => s.id === state.hostId);
+    const hostName = (hostSeat && state.seats[hostSeat]?.name) || hostSpectator?.name || 'Host';
 
     const summary: PublicRoomSummary = {
       code: state.code,
@@ -876,10 +914,11 @@ export class RoomDO extends DurableObject<Env> {
       hostName,
       timeControl: state.timeControl,
       status: state.game.status,
-      humanCount,
+      humanCount: humanIds.size,
       botCount,
       openSeats,
       createdAt: state.createdAt,
+      matchFormat: getRoomMatchFormat(state.seats),
     };
 
     await this.env.LOBBY.getByName('global').upsertRoomSummary(summary);

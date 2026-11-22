@@ -1,5 +1,5 @@
 import React from 'react';
-import { Color, DroppablePieceType, PocketCounts } from '../../shared/types';
+import { BoardId, Color, DroppablePieceType, PocketCounts } from '../../shared/types';
 import { assetUrl } from '../utils/routes';
 
 const PIECE_ORDER: DroppablePieceType[] = ['q', 'r', 'b', 'n', 'p'];
@@ -13,6 +13,7 @@ const PIECE_SVG_NAME: Record<DroppablePieceType, string> = {
 };
 
 interface PocketTrayProps {
+  boardId?: BoardId;
   color: Color;
   pocket: PocketCounts;
   interactive: boolean;
@@ -24,6 +25,7 @@ interface PocketTrayProps {
 }
 
 export const PocketTray: React.FC<PocketTrayProps> = ({
+  boardId,
   color,
   pocket,
   interactive,
@@ -65,7 +67,7 @@ export const PocketTray: React.FC<PocketTrayProps> = ({
               onDragStart={(e) => {
                 if (!canClick) return;
                 onSelectDrop(type);
-                e.dataTransfer.setData('text/plain', `drop:${type}`);
+                e.dataTransfer.setData('text/plain', boardId ? `drop:${boardId}:${type}` : `drop:${type}`);
               }}
               title={
                 count > 0

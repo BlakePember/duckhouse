@@ -13,14 +13,28 @@ const QUICK_CALLOUTS = [
 
 interface TeamChatProps {
   messages: RoomChatMessage[];
-  mySeat: SeatKey | null;
+  mySeats: SeatKey[];
+  isSoloTeam?: boolean;
   onSend: (text: string, scope: 'all' | 'team') => void;
 }
 
-export const TeamChat: React.FC<TeamChatProps> = ({ messages, mySeat, onSend }) => {
-  const [scope, setScope] = useState<'all' | 'team'>(mySeat ? 'team' : 'all');
+export const TeamChat: React.FC<TeamChatProps> = ({
+  messages,
+  mySeats,
+  isSoloTeam = false,
+  onSend,
+}) => {
+  const isSeated = mySeats.length > 0;
+  const canTeamChat = isSeated && !isSoloTeam;
+  const [scope, setScope] = useState<'all' | 'team'>(canTeamChat ? 'team' : 'all');
   const [text, setText] = useState('');
   const listRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!canTeamChat && scope === 'team') {
+      setScope('all');
+    }
+  }, [canTeamChat, scope]);
 
   useEffect(() => {
     if (listRef.current) {
@@ -31,7 +45,7 @@ export const TeamChat: React.FC<TeamChatProps> = ({ messages, mySeat, onSend }) 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!text.trim()) return;
-    onSend(text.trim(), mySeat ? scope : 'all');
+    onSend(text.trim(), canTeamChat ? scope : 'all');
     setText('');
   };
 
@@ -42,7 +56,7 @@ export const TeamChat: React.FC<TeamChatProps> = ({ messages, mySeat, onSend }) 
           <MessageSquare size={15} />
           <span>Table Chat</span>
         </div>
-        {mySeat && (
+        {canTeamChat && (
           <div className="dh-chat-scope-tabs">
             <button
               type="button"
@@ -63,7 +77,7 @@ export const TeamChat: React.FC<TeamChatProps> = ({ messages, mySeat, onSend }) 
         )}
       </div>
 
-      {mySeat && (
+      {canTeamChat && (
         <div className="dh-quick-callouts">
           {QUICK_CALLOUTS.map((callout) => (
             <button
@@ -81,7 +95,11 @@ export const TeamChat: React.FC<TeamChatProps> = ({ messages, mySeat, onSend }) 
 
       <div className="dh-chat-messages" ref={listRef}>
         {messages.length === 0 ? (
-          <div className="dh-chat-empty">No messages yet. Coordinate drops with your partner!</div>
+          <div className="dh-chat-empty">
+            {isSoloTeam
+              ? 'Playing both boards solo! Message opponents in Table Chat.'
+              : 'No messages yet. Coordinate drops with your partner!'}
+          </div>
         ) : (
           messages.map((m) => (
             <div key={m.id} className={`dh-chat-msg scope-${m.scope} seat-${m.seat === 'system' ? 'system' : 'user'}`}>
@@ -106,7 +124,7 @@ export const TeamChat: React.FC<TeamChatProps> = ({ messages, mySeat, onSend }) 
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={mySeat && scope === 'team' ? 'Message teammate...' : 'Message table...'}
+          placeholder={canTeamChat && scope === 'team' ? 'Message teammate...' : 'Message table...'}
           maxLength={220}
         />
         <button type="submit" className="dh-btn dh-btn-primary dh-btn-sm" aria-label="Send message">

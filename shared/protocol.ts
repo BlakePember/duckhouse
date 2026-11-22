@@ -44,7 +44,8 @@ export type LobbyServerMessage =
 export type RoomClientMessage =
   | { type: 'player:identify'; name: string }
   | { type: 'room:leave' }
-  | { type: 'room:takeSeat'; seat: SeatKey }
+  | { type: 'room:takeSeat'; seat: SeatKey; keepExisting?: boolean }
+  | { type: 'room:vacateSeat'; seat: SeatKey }
   | { type: 'room:addBot'; seat?: SeatKey }
   | { type: 'room:removeBot'; seat: SeatKey }
   | { type: 'room:start'; reqId?: string }

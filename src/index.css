@@ -2123,6 +2123,12 @@ button {
   color: var(--text-muted);
 }
 
+.dh-status-chip.format {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+}
+
 .dh-room-row-meta {
   display: flex;
   align-items: center;
@@ -2225,13 +2231,31 @@ button {
 }
 
 .dh-vs-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
   font-weight: 900;
   font-size: 0.9rem;
   color: var(--text-muted);
-  padding: 8px 10px;
+  padding: 8px 11px;
   border-radius: 999px;
   background: var(--bg-soft);
   border: 1px solid var(--border);
+}
+
+.dh-vs-divider.has-format {
+  border-radius: 14px;
+  border-color: color-mix(in srgb, var(--team-1) 45%, var(--border));
+  background: color-mix(in srgb, var(--team-1) 10%, var(--bg-soft));
+}
+
+.dh-vs-divider small {
+  font-size: 0.7rem;
+  font-weight: 850;
+  color: var(--team-1);
+  letter-spacing: 0.04em;
 }
 
 .dh-team-column {
@@ -2252,6 +2276,14 @@ button {
   border-top: 3px solid var(--team-2);
 }
 
+.dh-team-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .dh-team-header h3 {
   margin: 0;
   font-size: 1rem;
@@ -2260,6 +2292,18 @@ button {
 .dh-team-header span {
   font-size: 0.76rem;
   color: var(--text-muted);
+}
+
+.dh-tag.tag-solo {
+  background: color-mix(in srgb, var(--team-1) 18%, transparent);
+  color: var(--team-1);
+  border: 1px solid color-mix(in srgb, var(--team-1) 42%, transparent);
+}
+
+.dh-team-column.team-2 .dh-tag.tag-solo {
+  background: color-mix(in srgb, var(--team-2) 18%, transparent);
+  color: var(--team-2);
+  border-color: color-mix(in srgb, var(--team-2) 42%, transparent);
 }
 
 .dh-seat-card {
@@ -2308,7 +2352,13 @@ button {
 
 .dh-seat-empty-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.dh-release-seat-btn {
+  padding: 4px 8px;
+  font-size: 0.74rem;
 }
 
 .dh-waiting-footer {
@@ -2467,6 +2517,12 @@ button {
   border-radius: 999px;
   background: var(--bg-elev);
   border: 1px solid var(--border);
+}
+
+.dh-board-phase-tag.your-turn {
+  color: var(--team-1);
+  border-color: color-mix(in srgb, var(--team-1) 55%, transparent);
+  background: color-mix(in srgb, var(--team-1) 14%, var(--bg-elev));
 }
 
 .dh-board-phase-tag.duck {
@@ -2748,13 +2804,18 @@ button {
   user-select: none;
 }
 
-.dh-board-wrapper.duck-phase-active {
-  border-color: var(--duck-gold);
-  box-shadow: 0 0 0 4px var(--duck-glow), var(--shadow);
+.dh-board-wrapper.turn-active {
+  border-color: color-mix(in srgb, var(--team-1) 75%, var(--border-strong));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--team-1) 24%, transparent), var(--shadow);
 }
 
 .dh-board-wrapper.drop-phase-active {
   border-color: var(--accent);
+}
+
+.dh-board-wrapper.duck-phase-active {
+  border-color: var(--duck-gold);
+  box-shadow: 0 0 0 4px var(--duck-glow), var(--shadow);
 }
 
 .dh-board-grid {
