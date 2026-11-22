@@ -16,8 +16,6 @@ Online 2v2 multiplayer chess variant combining **Bughouse Chess** and **Duck Che
 - **Win Condition:** Official Duck Chess rules — no check restrictions. Capture either enemy King, flag an opponent on time, or win by resignation.
 
 ## Running Locally
-From inside the `duckhouse/` folder:
-
 ```bash
 npm install
 npm run dev
@@ -25,11 +23,13 @@ npm run dev
 
 `@cloudflare/vite-plugin` runs both the React frontend (with HMR) and the local Cloudflare Workers + Durable Objects runtime (`workerd`) together on **http://localhost:5173**.
 
-Run unit tests:
+Run unit tests and production build:
 ```bash
 npm test
+npm run build
 ```
 
 ## Production Deployment
-- **Backend (Cloudflare Workers + Durable Objects):** Live at `https://duckhouse-api.blakepember.workers.dev` (configured in [cloudflare.config.ts](./cloudflare.config.ts)). To deploy future backend changes from your terminal, sign in once with `npx cf auth login` and run `npm run deploy`.
-- **Frontend (GitHub Pages):** [.github/workflows/static.yml](../.github/workflows/static.yml) automatically builds `duckhouse/` and deploys it to `/duckhouse/` pointing at `https://duckhouse-api.blakepember.workers.dev` (overridable via the `DUCKHOUSE_SERVER_URL` GitHub Actions repository variable).
+- **Frontend + Backend (Cloudflare Workers + Durable Objects):** Hosted together on Cloudflare Workers at `https://duckhouse.blakepember.net` (Worker `duckhouse-api`, configured in [cloudflare.config.ts](./cloudflare.config.ts)).
+- **Manual deploy:** Sign in once with `npx cf auth login` and run `npm run deploy`.
+- **Automatic deploy:** [.github/workflows/ci.yml](./.github/workflows/ci.yml) runs unit tests and builds on every PR/push, and deploys to Cloudflare Workers on pushes to `main` when `CLOUDFLARE_API_TOKEN` is configured in GitHub repository secrets.

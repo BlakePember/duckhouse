@@ -8,6 +8,7 @@ export default defineConfig({
     entrypoint,
     compatibilityDate: '2026-11-19',
     workersDev: true,
+    domains: ['duckhouse.blakepember.net'],
     assets: {
       notFoundHandling: 'single-page-application',
       runWorkerFirst: ['/api/*', '/ws/*'],
