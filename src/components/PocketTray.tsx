@@ -19,6 +19,8 @@ interface PocketTrayProps {
   selectedDrop: DroppablePieceType | null;
   onSelectDrop: (piece: DroppablePieceType | null) => void;
   label?: string;
+  highlightPiece?: DroppablePieceType | null;
+  receivedPiece?: DroppablePieceType | null;
 }
 
 export const PocketTray: React.FC<PocketTrayProps> = ({
@@ -28,23 +30,33 @@ export const PocketTray: React.FC<PocketTrayProps> = ({
   selectedDrop,
   onSelectDrop,
   label,
+  highlightPiece = null,
+  receivedPiece = null,
 }) => {
   const total = PIECE_ORDER.reduce((sum, t) => sum + pocket[t], 0);
 
   return (
-    <div className={`dh-pocket ${interactive ? 'interactive' : ''} ${total > 0 ? 'has-pieces' : ''}`}>
+    <div
+      className={`dh-pocket ${interactive ? 'interactive' : ''} ${total > 0 ? 'has-pieces' : ''} ${
+        receivedPiece ? 'just-received' : ''
+      }`}
+    >
       <div className="dh-pocket-label">{label ?? 'Pocket'}</div>
       <div className="dh-pocket-slots">
         {PIECE_ORDER.map((type) => {
           const count = pocket[type];
           const isSelected = interactive && selectedDrop === type;
           const canClick = interactive && count > 0;
+          const isHighlighted = highlightPiece === type && count > 0 && !isSelected;
+          const isReceived = receivedPiece === type && count > 0;
           return (
             <button
               key={type}
               type="button"
               disabled={!canClick}
-              className={`dh-pocket-slot ${count > 0 ? 'available' : 'empty'} ${isSelected ? 'selected' : ''}`}
+              className={`dh-pocket-slot ${count > 0 ? 'available' : 'empty'} ${isSelected ? 'selected' : ''} ${
+                isHighlighted ? 'tutorial-highlight' : ''
+              } ${isReceived ? 'tutorial-received' : ''}`}
               onClick={() => {
                 if (!canClick) return;
                 onSelectDrop(isSelected ? null : type);

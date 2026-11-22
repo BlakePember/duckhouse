@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   BoardState,
   Color,
@@ -9,11 +9,9 @@ import {
 import {
   FILES,
   RANKS,
-  colOf,
   getLegalDropSquares,
   getLegalDuckSquares,
   getLegalMovesForSquare,
-  rowOf,
   toSquare,
 } from '../../shared/engine';
 import { assetUrl } from '../utils/routes';
@@ -39,6 +37,9 @@ interface ChessBoardProps {
   onDropMove: (pieceType: DroppablePieceType, to: number) => void;
   onDuckMove: (to: number) => void;
   compact?: boolean;
+  hintFromSquares?: number[];
+  hintTargetSquares?: number[];
+  threatSquares?: number[];
 }
 
 export const ChessBoard: React.FC<ChessBoardProps> = ({
@@ -51,10 +52,32 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
   onDropMove,
   onDuckMove,
   compact = false,
+  hintFromSquares,
+  hintTargetSquares,
+  threatSquares,
 }) => {
   const [selectedSquare, setSelectedSquare] = useState<number | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<{ from: number; to: number } | null>(null);
   const [hoveredSquare, setHoveredSquare] = useState<number | null>(null);
+
+  // Clear stale selection if phase/turn/canAct changes or selected piece is no longer movable
+  useEffect(() => {
+    if (!canAct || board.phase !== 'chess') {
+      setSelectedSquare(null);
+      setPendingPromotion(null);
+      return;
+    }
+    if (selectedSquare !== null) {
+      const p = board.squares[selectedSquare];
+      if (!p || p.color !== board.turn) {
+        setSelectedSquare(null);
+      }
+    }
+  }, [board, canAct, selectedSquare]);
+
+  const hintFromSet = useMemo(() => new Set(hintFromSquares ?? []), [hintFromSquares]);
+  const hintTargetSet = useMemo(() => new Set(hintTargetSquares ?? []), [hintTargetSquares]);
+  const threatSet = useMemo(() => new Set(threatSquares ?? []), [threatSquares]);
 
   const isDuckPhase = canAct && board.phase === 'duck';
 
@@ -195,6 +218,9 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
             const isLastFrom = board.lastMove?.from === sq;
             const isLastTo = board.lastMove?.to === sq;
             const isLastDuckTo = board.lastDuckMove?.to === sq;
+            const isHintFrom = hintFromSet.has(sq);
+            const isHintTarget = hintTargetSet.has(sq);
+            const isThreat = threatSet.has(sq);
             const showRank = cIdx === 0;
             const showFile = rIdx === 7;
             const showDuckGhost = isDuckPhase && isLegalDuck && hoveredSquare === sq;
@@ -208,6 +234,9 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
               isLegalDrop ? 'legal-drop' : '',
               isLegalDuck ? 'legal-duck' : '',
               hasDuck ? 'has-duck' : '',
+              isHintFrom ? 'hint-from' : '',
+              isHintTarget ? 'hint-target' : '',
+              isThreat ? 'threat-square' : '',
             ]
               .filter(Boolean)
               .join(' ');

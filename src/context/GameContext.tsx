@@ -42,6 +42,7 @@ export type PracticeMode = 'bots' | 'sandbox';
 interface GameContextValue {
   page: AppPage;
   setPage: (p: AppPage) => void;
+  openTutorial: () => void;
 
   playerId: string;
   playerName: string;
@@ -157,6 +158,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     else if (nextPage === 'lobby') navigatePath('/lobby');
     else if (nextPage === 'practice') navigatePath('/practice');
   }, []);
+
+  const scrollToTutorialSoon = useCallback(() => {
+    window.setTimeout(() => {
+      const el = document.getElementById('dh-tutorial');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
+  }, []);
+
+  const openTutorial = useCallback(() => {
+    setShowRules(false);
+    setPageState('home');
+    navigatePath('/tutorial');
+    scrollToTutorialSoon();
+  }, [scrollToTutorialSoon]);
 
   const connectAndEnterRoom = useCallback(async (code: string): Promise<boolean> => {
     const client = clientRef.current;
@@ -292,14 +309,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (window.location.hash) navigatePath('/practice', true);
         setPageState('practice');
       } else {
-        if (window.location.hash) navigatePath('/', true);
+        if (window.location.hash) navigatePath(parsed.scrollToTutorial ? '/tutorial' : '/', true);
         setPageState('home');
+        if (parsed.scrollToTutorial) {
+          scrollToTutorialSoon();
+        }
       }
     };
     syncRouteFromLocation();
     window.addEventListener('popstate', syncRouteFromLocation);
     return () => window.removeEventListener('popstate', syncRouteFromLocation);
-  }, [connectAndEnterRoom]);
+  }, [connectAndEnterRoom, scrollToTutorialSoon]);
 
   const setPlayerName = useCallback((name: string) => {
     const clean = name.trim().slice(0, 20) || 'Player';
@@ -562,6 +582,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value: GameContextValue = {
     page,
     setPage,
+    openTutorial,
     playerId,
     playerName,
     setPlayerName,

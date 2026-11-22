@@ -1,10 +1,10 @@
 import React from 'react';
-import { Crown, ShieldAlert, Shuffle, Sparkles, X } from 'lucide-react';
+import { Crown, GraduationCap, ShieldAlert, Shuffle, Sparkles, X } from 'lucide-react';
 import { useGame } from '../context/GameContext';
 import { assetUrl } from '../utils/routes';
 
 export const RulesModal: React.FC = () => {
-  const { showRules, setShowRules } = useGame();
+  const { showRules, setShowRules, openTutorial } = useGame();
   if (!showRules) return null;
 
   return (
@@ -67,6 +67,10 @@ export const RulesModal: React.FC = () => {
         </div>
 
         <div className="dh-modal-footer">
+          <button type="button" className="dh-btn dh-btn-secondary" onClick={openTutorial}>
+            <GraduationCap size={16} />
+            <span>Try Interactive Tutorial</span>
+          </button>
           <button type="button" className="dh-btn dh-btn-primary" onClick={() => setShowRules(false)}>
             Got it — Let’s Play!
           </button>
