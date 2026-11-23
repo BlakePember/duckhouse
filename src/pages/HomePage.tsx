@@ -5,7 +5,7 @@ import { HeroExplainerCard } from '../components/HeroExplainerCard';
 import { TutorialSection } from '../components/TutorialSection';
 
 export const HomePage: React.FC = () => {
-  const { setPage, setShowRules, openTutorial, startPractice, connected, matchmaking } = useGame();
+  const { setPage, setShowRules, openTutorial, openPractice, connected, matchmaking } = useGame();
 
   return (
     <main className="dh-page dh-home">
@@ -47,7 +47,7 @@ export const HomePage: React.FC = () => {
             <button
               type="button"
               className="dh-btn dh-btn-secondary dh-btn-lg"
-              onClick={() => startPractice('bots')}
+              onClick={() => openPractice('bots')}
             >
               <Bot size={18} />
               <span>Play vs Bots</span>
@@ -56,7 +56,7 @@ export const HomePage: React.FC = () => {
             <button
               type="button"
               className="dh-btn dh-btn-ghost dh-btn-lg"
-              onClick={() => startPractice('sandbox')}
+              onClick={() => openPractice('sandbox')}
             >
               <Users size={18} />
               <span>4-Seat Sandbox</span>

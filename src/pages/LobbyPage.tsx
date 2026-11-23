@@ -26,7 +26,7 @@ export const LobbyPage: React.FC = () => {
     joinRoom,
     joinMatchmaking,
     leaveMatchmaking,
-    startPractice,
+    openPractice,
     playerName,
   } = useGame();
 
@@ -113,7 +113,7 @@ export const LobbyPage: React.FC = () => {
               Objects runtime, or jump into offline Practice Mode right away!
             </p>
           </div>
-          <button type="button" className="dh-btn dh-btn-primary" onClick={() => startPractice('bots')}>
+          <button type="button" className="dh-btn dh-btn-primary" onClick={() => openPractice('bots')}>
             <Bot size={16} /> Play vs Bots Offline
           </button>
         </div>

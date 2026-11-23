@@ -1909,7 +1909,7 @@ button {
   gap: 6px;
   padding: 7px;
   border-radius: 7px;
-  border: none;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--text-muted);
   font-weight: 700;
@@ -1918,8 +1918,19 @@ button {
 
 .dh-segmented button.active {
   background: var(--bg-elev);
+  border-color: var(--border-strong);
   color: var(--text);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.dh-segmented button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.dh-segmented.compact button {
+  padding: 6px 11px;
+  font-size: 0.8rem;
 }
 
 .dh-inline-form {
@@ -2445,6 +2456,31 @@ button {
   font-size: 0.92rem;
   border: 1px solid var(--border);
   background: var(--bg-elev);
+}
+
+.dh-status-banner.variant-ready {
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-elev));
+  border-color: color-mix(in srgb, var(--accent) 52%, transparent);
+}
+
+.dh-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dh-color-picker-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dh-color-picker-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .dh-status-banner.variant-turn {
