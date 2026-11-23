@@ -8,6 +8,7 @@ import {
   getLegalDropSquares,
   getLegalDuckSquares,
   getLegalMovesForSquare,
+  resignGame,
   syncClocksInPlace,
 } from './engine.js';
 import { TIME_CONTROLS } from './types.js';
@@ -136,5 +137,23 @@ describe('Duckhouse Game Engine', () => {
     expect(game.winnerTeam).toBe(2); // A_w (Team 1) flagged -> Team 2 wins
     expect(game.winReason).toBe('timeout');
     expect(game.winningBoard).toBe('A');
+  });
+
+  it('keeps clocks stopped and blocks actions while a game is in waiting status', () => {
+    const game = createInitialGame(TIME_CONTROLS[2], 'waiting');
+    expect(game.status).toBe('waiting');
+    expect(game.startedAt).toBeNull();
+    expect(game.lastClockTickAt).toBeNull();
+
+    const flagged = syncClocksInPlace(game, Date.now() + 600_000);
+    expect(flagged).toBe(false);
+    expect(game.clocks.A_w).toBe(TIME_CONTROLS[2].initialMs);
+    expect(game.clocks.B_w).toBe(TIME_CONTROLS[2].initialMs);
+
+    const moveRes = applyChessMove(game, 'A', algebraicToSquare('e2'), algebraicToSquare('e4'));
+    expect(moveRes.ok).toBe(false);
+
+    const resigned = resignGame(game, 1, 'A');
+    expect(resigned.status).toBe('waiting');
   });
 });

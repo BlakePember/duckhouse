@@ -7,6 +7,7 @@ import {
   Flag,
   History,
   Layers,
+  Play,
   RefreshCw,
   RotateCcw,
   Users,
@@ -28,7 +29,7 @@ import {
   otherBoard,
 } from '../../shared/types';
 import { getRoomMatchFormat } from '../../shared/seats';
-import { PracticeMode, useGame } from '../context/GameContext';
+import { useGame } from '../context/GameContext';
 import { ChessBoard } from '../components/ChessBoard';
 import { PocketTray } from '../components/PocketTray';
 import { PlayerClock } from '../components/PlayerClock';
@@ -53,9 +54,13 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
     sendChat,
     playerName,
     practiceMode,
+    practiceColor,
     practiceTc,
     practiceGame,
-    startPractice,
+    openPractice,
+    setPracticeColor,
+    startPracticeGame,
+    resetPracticeGame,
     practiceMove,
     practiceDrop,
     practiceDuck,
@@ -74,6 +79,7 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
     B_w: null,
     B_b: null,
   });
+  const [nextBotsColor, setNextBotsColor] = useState<Color>(practiceColor);
   const prevGameRef = useRef<GameState | null>(null);
   const receiveTimersRef = useRef<Partial<Record<SeatKey, ReturnType<typeof setTimeout>>>>({});
 
@@ -83,11 +89,29 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
   const seats: Record<SeatKey, SeatPlayer | null> = useMemo(() => {
     if (isOnline && room) return room.seats;
     if (practiceMode === 'bots') {
+      const human: SeatPlayer = { id: 'human', name: playerName, isBot: false, connected: true, ready: true };
+      const partner: SeatPlayer = {
+        id: 'bot_partner',
+        name: 'QuackBot (Partner)',
+        isBot: true,
+        connected: true,
+        ready: true,
+      };
+      const opp1: SeatPlayer = { id: 'bot_opp1', name: 'MallardAI', isBot: true, connected: true, ready: true };
+      const opp2: SeatPlayer = { id: 'bot_opp2', name: 'DrakeEngine', isBot: true, connected: true, ready: true };
+      if (practiceColor === 'b') {
+        return {
+          A_w: opp1,
+          B_b: opp2,
+          A_b: human,
+          B_w: partner,
+        };
+      }
       return {
-        A_w: { id: 'human', name: playerName, isBot: false, connected: true, ready: true },
-        B_b: { id: 'bot_partner', name: 'QuackBot (Partner)', isBot: true, connected: true, ready: true },
-        A_b: { id: 'bot_opp1', name: 'MallardAI', isBot: true, connected: true, ready: true },
-        B_w: { id: 'bot_opp2', name: 'DrakeEngine', isBot: true, connected: true, ready: true },
+        A_w: human,
+        B_b: partner,
+        A_b: opp1,
+        B_w: opp2,
       };
     }
     if (practiceMode === 'dual') {
@@ -104,18 +128,28 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
       A_b: { id: 's3', name: 'Board A Black', isBot: false, connected: true, ready: true },
       B_w: { id: 's4', name: 'Board B White', isBot: false, connected: true, ready: true },
     };
-  }, [isOnline, room, practiceMode, playerName]);
+  }, [isOnline, room, practiceMode, practiceColor, playerName]);
 
   const activeSeats: SeatKey[] = useMemo(() => {
     if (isOnline) return mySeats;
-    if (practiceMode === 'bots') return ['A_w'];
+    if (practiceMode === 'bots') return [getSeatKey('A', practiceColor)];
     if (practiceMode === 'dual') return ['A_w', 'B_b'];
     return [];
-  }, [isOnline, mySeats, practiceMode]);
+  }, [isOnline, mySeats, practiceMode, practiceColor]);
 
   useEffect(() => {
     setSelectedDrops({ A: null, B: null });
-  }, [game?.startedAt, mode, practiceMode]);
+  }, [game?.startedAt, mode, practiceMode, practiceColor]);
+
+  useEffect(() => {
+    setFlipped(false);
+  }, [practiceMode, practiceColor]);
+
+  useEffect(() => {
+    if (game?.status !== 'finished') {
+      setNextBotsColor(practiceColor);
+    }
+  }, [game?.status, practiceColor]);
 
   useEffect(() => {
     const timers = receiveTimersRef.current;
@@ -247,6 +281,8 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
           >
             {game.status === 'finished'
               ? 'Finished'
+              : game.status === 'waiting'
+              ? 'Ready'
               : board.phase === 'duck'
               ? `🦆 ${board.turn === 'w' ? 'White' : 'Black'} moving Duck`
               : showActiveTurnHighlight && canAct
@@ -325,17 +361,36 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
 
   let bannerText = '';
   let bannerVariant = 'neutral';
-  if (game.status === 'finished') {
-    const winLabel = game.winnerTeam === 1 ? 'Team Emerald' : 'Team Amber';
-    const reasonText =
-      game.winReason === 'king_capture'
-        ? `King captured on Board ${game.winningBoard}!`
-        : game.winReason === 'timeout'
-        ? `Time expired on Board ${game.winningBoard}!`
-        : 'Opponent resigned!';
-    const iWon = myTeam !== null && myTeam === game.winnerTeam;
-    bannerText = `${iWon ? '🏆 Victory! ' : ''}${winLabel} wins — ${reasonText}`;
-    bannerVariant = iWon ? 'win' : 'finished';
+  const finishedSummary =
+    game.status === 'finished'
+      ? {
+          winLabel: game.winnerTeam === 1 ? 'Team Emerald' : 'Team Amber',
+          reasonText:
+            game.winReason === 'king_capture'
+              ? `King captured on Board ${game.winningBoard}!`
+              : game.winReason === 'timeout'
+              ? `Time expired on Board ${game.winningBoard}!`
+              : 'Opponent resigned!',
+          iWon: myTeam !== null && myTeam === game.winnerTeam,
+        }
+      : null;
+
+  if (game.status === 'waiting') {
+    if (!isOnline) {
+      bannerText =
+        practiceMode === 'bots'
+          ? `Ready to play Solo Practice vs Bots as ${practiceColor === 'w' ? 'White' : 'Black'} — choose your color or time control, then press Start Game.`
+          : practiceMode === 'dual'
+          ? 'Ready to play 2v1 (Both Boards) vs Bots — control Board A White & Board B Black when you start.'
+          : 'Ready for 4-Seat Sandbox — control all four seats freely once you start.';
+      bannerVariant = 'ready';
+    } else {
+      bannerText = 'Waiting for match to start…';
+      bannerVariant = 'neutral';
+    }
+  } else if (finishedSummary) {
+    bannerText = `${finishedSummary.iWon ? '🏆 Victory! ' : ''}${finishedSummary.winLabel} wins — ${finishedSummary.reasonText}`;
+    bannerVariant = finishedSummary.iWon ? 'win' : 'finished';
   } else if (!isOnline && practiceMode === 'sandbox') {
     const duckOnA = game.boards.A.phase === 'duck';
     const duckOnB = game.boards.B.phase === 'duck';
@@ -396,21 +451,27 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
               <button
                 type="button"
                 className={`dh-seg-btn ${practiceMode === 'bots' ? 'active' : ''}`}
-                onClick={() => startPractice('bots', practiceTc)}
+                onClick={() => {
+                  if (practiceMode !== 'bots') openPractice('bots', practiceTc);
+                }}
               >
                 <Bot size={14} /> vs 3 Bots
               </button>
               <button
                 type="button"
                 className={`dh-seg-btn ${practiceMode === 'dual' ? 'active' : ''}`}
-                onClick={() => startPractice('dual', practiceTc)}
+                onClick={() => {
+                  if (practiceMode !== 'dual') openPractice('dual', practiceTc);
+                }}
               >
                 <Layers size={14} /> 2v1 (Both Boards)
               </button>
               <button
                 type="button"
                 className={`dh-seg-btn ${practiceMode === 'sandbox' ? 'active' : ''}`}
-                onClick={() => startPractice('sandbox', practiceTc)}
+                onClick={() => {
+                  if (practiceMode !== 'sandbox') openPractice('sandbox', practiceTc);
+                }}
               >
                 <Users size={14} /> 4-Seat Sandbox
               </button>
@@ -451,11 +512,11 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
             </button>
           )}
 
-          {game.status === 'finished' && (
+          {game.status === 'finished' && (isOnline || practiceMode !== 'bots') && (
             <button
               type="button"
               className="dh-btn dh-btn-primary dh-btn-sm"
-              onClick={isOnline ? rematch : () => startPractice(practiceMode, practiceTc)}
+              onClick={isOnline ? rematch : () => startPracticeGame()}
             >
               <RefreshCw size={14} /> {isOnline ? 'Rematch (Swap Colors)' : 'Play Again'}
             </button>
@@ -466,11 +527,77 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
       {/* Turn / Duck / Victory Banner */}
       <div className={`dh-status-banner variant-${bannerVariant}`}>
         <span>{bannerText}</span>
-        {game.status === 'finished' && (
+        {!isOnline && game.status === 'waiting' && (
+          <div className="dh-banner-actions">
+            {practiceMode === 'bots' && (
+              <div className="dh-color-picker-inline" role="group" aria-label="Choose your color">
+                <span className="dh-color-picker-label">Play as</span>
+                <div className="dh-segmented compact">
+                  <button
+                    type="button"
+                    className={practiceColor === 'w' ? 'active' : ''}
+                    aria-pressed={practiceColor === 'w'}
+                    onClick={() => setPracticeColor('w')}
+                  >
+                    <span className="dh-color-swatch white" /> White
+                  </button>
+                  <button
+                    type="button"
+                    className={practiceColor === 'b' ? 'active' : ''}
+                    aria-pressed={practiceColor === 'b'}
+                    onClick={() => setPracticeColor('b')}
+                  >
+                    <span className="dh-color-swatch black" /> Black
+                  </button>
+                </div>
+              </div>
+            )}
+            <button
+              type="button"
+              className="dh-btn dh-btn-primary"
+              onClick={() => startPracticeGame()}
+            >
+              <Play size={16} /> Start Game
+            </button>
+          </div>
+        )}
+        {game.status === 'finished' && !isOnline && practiceMode === 'bots' && (
+          <div className="dh-banner-actions">
+            <div className="dh-color-picker-inline" role="group" aria-label="Choose next color">
+              <span className="dh-color-picker-label">Play again as</span>
+              <div className="dh-segmented compact">
+                <button
+                  type="button"
+                  className={nextBotsColor === 'w' ? 'active' : ''}
+                  aria-pressed={nextBotsColor === 'w'}
+                  onClick={() => setNextBotsColor('w')}
+                >
+                  <span className="dh-color-swatch white" /> White
+                </button>
+                <button
+                  type="button"
+                  className={nextBotsColor === 'b' ? 'active' : ''}
+                  aria-pressed={nextBotsColor === 'b'}
+                  onClick={() => setNextBotsColor('b')}
+                >
+                  <span className="dh-color-swatch black" /> Black
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="dh-btn dh-btn-primary dh-btn-sm"
+              onClick={() => startPracticeGame(nextBotsColor)}
+            >
+              <Play size={14} /> Start Game
+            </button>
+          </div>
+        )}
+        {game.status === 'finished' && (isOnline || practiceMode !== 'bots') && (
           <button
             type="button"
             className="dh-btn dh-btn-primary dh-btn-sm"
-            onClick={isOnline ? rematch : () => startPractice(practiceMode, practiceTc)}
+            onClick={isOnline ? rematch : () => startPracticeGame()}
           >
             <Crown size={14} /> {isOnline ? 'Rematch' : 'New Match'}
           </button>
@@ -488,13 +615,47 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
           {!isOnline && (
             <div className="dh-card dh-practice-panel">
               <div className="dh-panel-heading">Practice Settings</div>
+              {practiceMode === 'bots' && (
+                <div className="dh-field">
+                  <span>{game.status === 'finished' ? 'Next Game Color' : 'Your Color'}</span>
+                  <div
+                    className="dh-segmented"
+                    role="group"
+                    aria-label="Choose your color"
+                    title={game.status === 'playing' ? 'Reset match to change color' : undefined}
+                  >
+                    <button
+                      type="button"
+                      className={(game.status === 'finished' ? nextBotsColor : practiceColor) === 'w' ? 'active' : ''}
+                      aria-pressed={(game.status === 'finished' ? nextBotsColor : practiceColor) === 'w'}
+                      disabled={game.status === 'playing'}
+                      onClick={() =>
+                        game.status === 'finished' ? setNextBotsColor('w') : setPracticeColor('w')
+                      }
+                    >
+                      <span className="dh-color-swatch white" /> White
+                    </button>
+                    <button
+                      type="button"
+                      className={(game.status === 'finished' ? nextBotsColor : practiceColor) === 'b' ? 'active' : ''}
+                      aria-pressed={(game.status === 'finished' ? nextBotsColor : practiceColor) === 'b'}
+                      disabled={game.status === 'playing'}
+                      onClick={() =>
+                        game.status === 'finished' ? setNextBotsColor('b') : setPracticeColor('b')
+                      }
+                    >
+                      <span className="dh-color-swatch black" /> Black
+                    </button>
+                  </div>
+                </div>
+              )}
               <label className="dh-field">
                 <span>Time Control</span>
                 <select
                   value={practiceTc.id}
                   onChange={(e) => {
                     const tc = TIME_CONTROLS.find((t) => t.id === e.target.value) ?? TIME_CONTROLS[2];
-                    startPractice(practiceMode as PracticeMode, tc);
+                    openPractice(practiceMode, tc);
                   }}
                 >
                   {TIME_CONTROLS.map((tc) => (
@@ -504,13 +665,39 @@ export const GamePage: React.FC<GamePageProps> = ({ mode }) => {
                   ))}
                 </select>
               </label>
-              <button
-                type="button"
-                className="dh-btn dh-btn-secondary dh-btn-full dh-btn-sm"
-                onClick={() => startPractice(practiceMode, practiceTc)}
-              >
-                <RefreshCw size={14} /> Restart Match
-              </button>
+              {game.status === 'waiting' ? (
+                <button
+                  type="button"
+                  className="dh-btn dh-btn-primary dh-btn-full"
+                  onClick={() => startPracticeGame()}
+                >
+                  <Play size={15} /> Start Game
+                </button>
+              ) : game.status === 'playing' ? (
+                <button
+                  type="button"
+                  className="dh-btn dh-btn-secondary dh-btn-full dh-btn-sm"
+                  onClick={resetPracticeGame}
+                >
+                  <RefreshCw size={14} /> Reset Match
+                </button>
+              ) : practiceMode === 'bots' ? (
+                <button
+                  type="button"
+                  className="dh-btn dh-btn-primary dh-btn-full dh-btn-sm"
+                  onClick={() => startPracticeGame(nextBotsColor)}
+                >
+                  <Play size={14} /> Start as {nextBotsColor === 'w' ? 'White' : 'Black'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="dh-btn dh-btn-primary dh-btn-full dh-btn-sm"
+                  onClick={() => startPracticeGame()}
+                >
+                  <RefreshCw size={14} /> Play Again
+                </button>
+              )}
             </div>
           )}
 

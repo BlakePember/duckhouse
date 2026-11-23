@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import {
   BoardId,
   ChessMoveInput,
+  Color,
   DropMoveInput,
   DuckMoveInput,
   GameState,
@@ -83,9 +84,13 @@ interface GameContextValue {
   leaveMatchmaking: () => void;
 
   practiceMode: PracticeMode;
+  practiceColor: Color;
   practiceTc: TimeControl;
   practiceGame: GameState;
-  startPractice: (mode: PracticeMode, tc?: TimeControl) => void;
+  openPractice: (mode: PracticeMode, tc?: TimeControl) => void;
+  setPracticeColor: (color: Color) => void;
+  startPracticeGame: (color?: Color, tc?: TimeControl) => void;
+  resetPracticeGame: () => void;
   practiceMove: (input: ChessMoveInput) => void;
   practiceDrop: (input: DropMoveInput) => void;
   practiceDuck: (input: DuckMoveInput) => void;
@@ -135,9 +140,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [practiceMode, setPracticeMode] = useState<PracticeMode>('bots');
+  const [practiceColor, setPracticeColorState] = useState<Color>('w');
   const [practiceTc, setPracticeTc] = useState<TimeControl>(TIME_CONTROLS[2]);
   const [practiceGame, setPracticeGame] = useState<GameState>(() =>
-    createInitialGame(TIME_CONTROLS[2], 'playing')
+    createInitialGame(TIME_CONTROLS[2], 'waiting')
   );
 
   const clientRef = useRef<DuckhouseRealtimeClient | null>(null);
@@ -464,15 +470,40 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // --- Local Practice / Offline Sandbox ---
 
-  const startPractice = useCallback(
+  const openPractice = useCallback(
     (mode: PracticeMode, tc: TimeControl = practiceTc) => {
       setPracticeMode(mode);
       setPracticeTc(tc);
-      setPracticeGame(createInitialGame(tc, 'playing'));
+      setPracticeGame(createInitialGame(tc, 'waiting'));
       setPage('practice');
     },
     [practiceTc, setPage]
   );
+
+  const setPracticeColor = useCallback(
+    (color: Color) => {
+      if (practiceGame.status === 'playing') return;
+      setPracticeColorState(color);
+      if (practiceGame.status === 'finished') {
+        setPracticeGame(createInitialGame(practiceTc, 'waiting'));
+      }
+    },
+    [practiceGame.status, practiceTc]
+  );
+
+  const startPracticeGame = useCallback(
+    (colorOverride?: Color, tcOverride?: TimeControl) => {
+      const nextTc = tcOverride ?? practiceTc;
+      if (colorOverride) setPracticeColorState(colorOverride);
+      if (tcOverride) setPracticeTc(tcOverride);
+      setPracticeGame(createInitialGame(nextTc, 'playing'));
+    },
+    [practiceTc]
+  );
+
+  const resetPracticeGame = useCallback(() => {
+    setPracticeGame(createInitialGame(practiceTc, 'waiting'));
+  }, [practiceTc]);
 
   const practiceMove = useCallback((input: ChessMoveInput) => {
     setPracticeGame((curr) => {
@@ -508,13 +539,19 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const practiceResign = useCallback(() => {
     setPracticeGame((curr) => {
+      if (curr.status !== 'playing') return curr;
       playWinSound();
-      return resignGame(curr, 1, 'A');
+      const resigningTeam =
+        practiceMode === 'bots' ? getSeatTeam(getSeatKey('A', practiceColor)) : 1;
+      return resignGame(curr, resigningTeam, 'A');
     });
-  }, []);
+  }, [practiceMode, practiceColor]);
 
   useEffect(() => {
     if (page !== 'practice' || practiceGame.status !== 'playing') return;
+    setPracticeGame((curr) =>
+      curr.status === 'playing' ? { ...curr, lastClockTickAt: Date.now() } : curr
+    );
     const id = setInterval(() => {
       setPracticeGame((curr) => {
         if (curr.status !== 'playing') return curr;
@@ -535,7 +572,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     ) {
       return;
     }
-    const humanSeats: SeatKey[] = practiceMode === 'dual' ? ['A_w', 'B_b'] : ['A_w'];
+    const humanSeats: SeatKey[] =
+      practiceMode === 'dual' ? ['A_w', 'B_b'] : [getSeatKey('A', practiceColor)];
     const timers: ReturnType<typeof setTimeout>[] = [];
 
     for (const boardId of ['A', 'B'] as BoardId[]) {
@@ -583,6 +621,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [
     page,
     practiceMode,
+    practiceColor,
     practiceGame.status,
     practiceGame.startedAt,
     practiceGame.boards.A.turn,
@@ -632,9 +671,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     joinMatchmaking,
     leaveMatchmaking,
     practiceMode,
+    practiceColor,
     practiceTc,
     practiceGame,
-    startPractice,
+    openPractice,
+    setPracticeColor,
+    startPracticeGame,
+    resetPracticeGame,
     practiceMove,
     practiceDrop,
     practiceDuck,

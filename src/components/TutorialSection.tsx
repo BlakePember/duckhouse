@@ -55,7 +55,7 @@ interface FeedbackState {
 }
 
 export const TutorialSection: React.FC = () => {
-  const { startPractice, setPage } = useGame();
+  const { openPractice, setPage } = useGame();
 
   const [lessonIndex, setLessonIndex] = useState(0);
   const [completedIds, setCompletedIds] = useState<string[]>(() => loadCompletedLessons());
@@ -432,7 +432,7 @@ export const TutorialSection: React.FC = () => {
                 <button
                   type="button"
                   className="dh-btn dh-btn-primary"
-                  onClick={() => startPractice('bots')}
+                  onClick={() => openPractice('bots')}
                 >
                   <Bot size={15} />
                   <span>Play vs Bots</span>
@@ -448,7 +448,7 @@ export const TutorialSection: React.FC = () => {
                 <button
                   type="button"
                   className="dh-btn dh-btn-ghost"
-                  onClick={() => startPractice('sandbox')}
+                  onClick={() => openPractice('sandbox')}
                 >
                   <Users size={15} />
                   <span>4-Seat Sandbox</span>
